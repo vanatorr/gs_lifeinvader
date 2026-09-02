@@ -1,0 +1,389 @@
+/*
+ * ÉQUIPE ET FICHE EMPLOYÉ: la composition, et le vocabulaire visuel que la maquette n'avait pas.
+ *
+ * ⚠ POURQUOI UN MODULE CSS ALORS QUE `design/PORTAL_DESIGN.md` §10.1 DIT "jamais un module CSS a
+ * cote". La règle vise la DÉRIVE (chaque page s'inventant ses propres surfaces), et elle reste la
+ * bonne règle. Elle est écartée ici pour une raison mécanique, pas esthétique: `business.css` est
+ * édité en parallèle par plusieurs refontes de pages sur la même branche, et y ajouter un bloc
+ * garantissait un conflit sur un fichier que personne ne peut relire en entier à chaque fusion.
+ * Ces classes sont DEUX pages, pas un système concurrent, et rien ici ne redéfinit une règle
+ * existante: `.head`, `.figs`/`.fig`, `.panel`/`.ph`, `.cap`, `.chip`, `.tag`, `.delta`, `.dim`,
+ * `.num`, `.mono`, `.pick` et `.tvis` restent les classes globales de `business.css` et sont
+ * utilisées telles quelles. À REPLIER DANS `business.css` quand les refontes parallèles auront
+ * atterri, en gardant les commentaires.
+ *
+ * ⚠⚠ RECOMPOSÉ TROIS FOIS, ET LA TROISIÈME EST LA PLUS STRUCTURANTE. Historique des retours du
+ * propriétaire, parce que chacun explique une règle qu'il ne faut pas défaire:
+ *
+ *   1 (bandes empilées -> colonne + rail). "the layout isnt good. i look at it i feel lost", "there
+ *     are as you can see uneven higfhts", "space isnt used correctly". Réponses structurelles:
+ *     `.work` étire ses deux colonnes, le DERNIER bloc de chaque colonne est un ABSORBEUR
+ *     (`.absorb`) qui prend le mou et fait défiler son contenu, donc deux colonnes de hauteurs
+ *     différentes ne sont plus une chose à surveiller mais une chose impossible à écrire.
+ *
+ *   2 (passage à shadcn). "lowky it doesnt look good. use shadcn and shadcn graphs and things. but
+ *     still colorful." Le vocabulaire est devenu `Card`/`Avatar`/`Badge`/`Progress`/`Table`/`Empty`
+ *     plus de vrais graphiques Recharts; ce module ne porte plus la couleur ni le rayon d'une
+ *     carte, seulement la CHARPENTE et l'agencement interne des blocs shadcn.
+ *
+ *   3 (2026-08-09, LE TROMBINOSCOPE DISPARAÎT). "gestion/equipe employee page needs way better
+ *     graphs and more mulyi employee proof gestion/equipe look how it is. this should just be a
+ *     list that opens team page", plus, pour tout le portail: "it must be profesionnal charting,
+ *     graphing. SHOWING MOST IMPOSTANT and data that changes. and correct spacing, layout".
+ *     La page basculait entre DEUX gabarits selon l'effectif (grandes cartes portraits jusqu'à
+ *     quatre, relevé au-delà). Le défaut n'était pas le dessin des cartes: c'était le BASCULEMENT.
+ *     Une composition réglée pour un effectif est fausse pour tous les autres, et il l'a vue avec
+ *     deux employés - deux blocs énormes, une page vide en dessous. Tout ce fichier a donc perdu
+ *     `.roster.few`, `.emp`, `.card`, `.cardBody`, `.top`, `.cells`, `.cell`, `.ck`, `.cv`,
+ *     `.gaugeWrap`, `.pct`, `.spark` (version graphique) et `.railChart`: il n'y a plus qu'UNE
+ *     forme de liste, identique à un employé et à trente. NE PAS LES RÉINTRODUIRE.
+ *
+ * ⚠ AUCUNE COULEUR EN DUR. Tout passe par les jetons: `--k`/`--kt`/`--onk` pour un rayon,
+ * `--brand`/`--brand-text` pour l'accent de l'enseigne, `--ok`/`--warn`/`--bad` pour un état,
+ * `--line`/`--hair`/`--surf`/`--plate` pour les surfaces - et, pour les morceaux shadcn, les jetons
+ * sémantiques `--primary`/`--card`/`--secondary`/`--chart-1..5` que `lib/business/theme.ts`
+ * (`shadcnBridge`) pointe déjà sur cette même palette.
+ *
+ * ⚠ UNE BOÎTE EST UNE BOÎTE FERMÉE (règle propriétaire du 2026-08-05). Chaque carte et chaque
+ * panneau porte ses quatre côtés plus un rayon. Les seuls filets à un côté de ce fichier sont des
+ * SÉPARATEURS entre deux choses à l'intérieur d'une boîte déjà fermée: les lignes d'une liste de
+ * rail et celles d'un relevé.
+ */
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────
+   LA CHARPENTE.
+   Colonne principale plus rail, exactement la charpente de la Caisse (la page que le propriétaire
+   valide) et de `.split` dans business.css. On ne réinvente pas une proportion par page.
+
+   ⚠ 1080px est le MÊME palier que `.split`: en dessous, le rail passe sous le contenu. Aligner ce
+   palier sur celui de la feuille globale évite qu'une page bascule pendant que sa voisine tient.
+   ───────────────────────────────────────────────────────────────────────────────────────────── */
+/*
+ * ⚠ `min-height` SUR LA CHARPENTE: c'est la réponse au défaut "la page s'arrête aux deux tiers de
+ * l'écran". Ce qui est toujours au-dessus coûte ~223px (marge de `.main` 30 + 48, en-tête ~43 + 14,
+ * bande de figures ~72 + 14).
+ *
+ * ⚠⚠ VISER 100 POUR CENT SERAIT UNE ERREUR, ET C'EST LA MESURE QUI L'A MONTRÉ. Une version
+ * précédente à `- 280px` remplissait 94,7 pour cent de 1080p, mais pour une équipe d'UNE personne
+ * le mou allait quelque part: un graphique de 537px de haut pour 136px de large par barre. On avait
+ * rempli l'écran en étirant une chose jusqu'à ce qu'elle ne ressemble plus à elle-même, ce qui est
+ * le même défaut que le vide, retourné.
+ *
+ * ⚠ `- 340px` EST UNE VALEUR MESURÉE, PAS UNE ESTIMATION. Ce qui précède la charpente occupe 175px
+ * (marge de `.main` 30, en-tête 43 + 14, bande de figures 74 + 14) et il reste 48px de marge basse,
+ * relevés en navigateur réel sur 1440x1080. La composition se termine donc vers 89 pour cent de la
+ * hauteur d'écran: pleine sans toucher le bord, ce qui est la cible que ce fichier vise depuis le
+ * premier retour. Une première tentative à `- 520px` s'arrêtait à 65 pour cent, c'est-à-dire
+ * exactement le défaut nº3 réintroduit.
+ *
+ * ⚠ CE N'EST PAS DU REMPLISSAGE. Le mou est distribué dans des éléments qui s'AMÉLIORENT en
+ * grandissant, le graphique de tête et la liste du rail (qui montre plus de lignes avant de
+ * défiler). Un bloc à qui la hauteur ne sert à rien n'est jamais un absorbeur: le relevé, par
+ * exemple, garde sa taille naturelle et laisse la page défiler.
+ *
+ * Le palier bas l'annule (voir la media query en fin de fichier): empilé, il n'y a plus de colonne
+ * voisine à rejoindre, donc rien à étirer et une hauteur imposée ne serait qu'un trou.
+ */
+.work {
+  display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: stretch;
+  min-height: calc(100vh - 340px);
+}
+.wmain, .wrail { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; }
+
+/*
+ * L'ABSORBEUR: le bloc élastique d'une colonne prend la hauteur restante et fait défiler son
+ * contenu à l'intérieur, au lieu de laisser un vide sous la colonne la plus courte.
+ *
+ * ⚠ `min-height: 0` est OBLIGATOIRE à chaque niveau. Sans lui, un enfant en `overflow-y: auto`
+ * dans une colonne flex ne se borne pas: il POUSSE la colonne à la taille de son contenu au lieu
+ * de défiler, et les deux colonnes redeviennent de hauteurs différentes, exactement le défaut
+ * qu'on est en train de corriger. C'est la même règle que `.receipt`/`.rlines` en Caisse.
+ */
+/*
+ * ⚠⚠ `flex-basis: 0`, ET SURTOUT PAS `auto`. C'est la base qui décide si un absorbeur PARTICIPE à
+ * la taille intrinsèque de sa colonne. Essayé avec `auto` pour mieux répartir le vide, et mesuré:
+ * le fil des ventes prenait alors ses soixante lignes comme base, la colonne montait à 4 772px et
+ * la page à 462 POUR CENT de la hauteur d'écran sur une équipe de douze. Un absorbeur doit être
+ * élastique dans les DEUX sens, donc sa base est nulle et sa taille vient entièrement de la place
+ * restante; c'est ce qui lui permet aussi bien de s'étirer que de rendre la place à son voisin.
+ */
+.absorb { flex: 1 1 0; min-height: 160px; display: flex; flex-direction: column; }
+/* ⚠ L'en-tête d'un panneau absorbeur ne doit jamais se comprimer: dans une colonne flex il est un
+   ITEM, donc `flex-shrink` vaut 1 par défaut et un contenu trop long l'écraserait avant de faire
+   défiler le corps, ce qui est exactement l'inverse de l'intention. */
+.absorb > :global(.ph) { flex: none; }
+.scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────
+   LES CARTES DE GRAPHIQUE.
+   Un `Card` shadcn (en-tête, titre, légende, corps), avec la GÉOMÉTRIE du portail imposée en
+   classes Tailwind au site d'appel (`rounded-[var(--r)] border border-border ring-0`): le composant
+   arrive en `rounded-xl ring-1`, ce qui jurerait à côté des `.panel` à 4px de rayon posés juste en
+   dessous. Composé en Tailwind et non ici, pour que `tailwind-merge` remplace proprement la classe
+   du composant au lieu de parier sur l'ordre des feuilles de style entre ce module et Tailwind.
+   ───────────────────────────────────────────────────────────────────────────────────────────── */
+.chartCard { min-width: 0; }
+
+/*
+ * ⚠⚠ COLLISION DE NOM: `business.css` DÉFINIT UNE CLASSE GLOBALE `.grid`, ET ELLE ÉCRASE CELLE DE
+ * TAILWIND SOUS TOUT `/business`. C'est un vrai piège du portail, découvert au banc d'essai le
+ * 2026-08-09, et il ne se voit qu'à l'oeil: la grille produits de la Caisse s'appelle `.grid` et
+ * pose `grid-template-columns: repeat(auto-fill, minmax(215px, 1fr))` plus `gap: 10px`. La classe
+ * utilitaire `.grid` de Tailwind, elle, ne pose QUE `display: grid`. Même nom, même spécificité
+ * (0,1,0), et `business.css` est importé par `app/business/layout.tsx`, donc APRÈS `globals.css`:
+ * il gagne sur les deux propriétés qu'il déclare.
+ *
+ * Conséquence: tout composant shadcn qui utilise `grid` en interne hérite, dans ce portail, d'une
+ * grille à colonnes de 215px minimum. `CardHeader` en est un - son titre et sa légende, censés
+ * s'empiler, se retrouvaient CÔTE À CÔTE dans trois colonnes de 249px (mesuré). Composer
+ * `grid-cols-1` au site d'appel ne suffit PAS: même spécificité, et `business.css` passe encore
+ * après. Il faut donc un sélecteur plus spécifique, ce que ce module fournit ici (0,2,0).
+ *
+ * ⚠ Ce contournement est LOCAL à ces deux pages. La collision existe partout ailleurs sous
+ * `/business`; la corriger à la source demanderait de renommer `.grid` dans `business.css`, qui
+ * n'appartient pas à cette refonte et qui est édité en parallèle. À signaler, pas à faire ici.
+ */
+.chartCard :global([data-slot="card-header"]) {
+  /* Ce que `grid-cols-1` + `gap-1` de Tailwind auraient posé si la collision n'existait pas. */
+  grid-template-columns: minmax(0, 1fr); gap: 4px;
+}
+/* Même collision dans la bulle de Recharts (`ChartTooltipContent` est une grille shadcn): sans ça
+   elle réclame 215px de large par colonne et s'ouvre bien plus grande que son contenu. */
+.chartCard :global(.recharts-tooltip-wrapper .grid) { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+/*
+ * ⚠ LA LÉGENDE PASSE À LA LIGNE. `ChartLegendContent` est une rangée `flex` sans `flex-wrap`: à
+ * 375px, cinq séries dont un nom de vingt-cinq caractères ("Marie-Ange Delacroix-Beaumont") sortent
+ * des deux côtés de la carte, la première entrée coupée à gauche et la dernière réduite à sa
+ * pastille (mesuré au banc d'essai le 2026-08-10). Le défaut existait déjà; l'effectif complet le
+ * rend simplement courant, puisqu'il peut y avoir une série de plus qu'avant. Une rangée qui
+ * s'enroule ne coûte rien aux largeurs où tout tenait déjà.
+ */
+.chartCard :global(.recharts-legend-wrapper > div) { flex-wrap: wrap; row-gap: 4px; }
+/*
+ * LE GRAPHIQUE DE TÊTE EST L'ABSORBEUR DE SA COLONNE.
+ *
+ * ⚠ Le mou ne peut aller que dans un bloc qui GAGNE à grandir, et sur cette page c'est le seul.
+ * Une aire de sept à trente points gagne en lisibilité avec de la hauteur; un relevé ne gagne rien
+ * à écarter ses lignes, et une liste de ventes n'en gagne qu'en montrant plus de lignes (ce que
+ * fait le rail). Placé en PREMIER dans la colonne et non en dernier comme les autres absorbeurs:
+ * la position dans une colonne flex n'a aucune incidence sur `flex: 1 1 0`, et un gérant regarde la
+ * tendance avant de regarder qui l'a produite.
+ */
+.chartLead { flex: 1 1 0; min-height: 300px; }
+.chartBody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+/* `min-height` sur le tracé lui-même: sous ce seuil, Recharts rend des axes qui se chevauchent
+   plutôt qu'un graphique, et mieux vaut faire défiler la page que montrer une bouillie. */
+.chartFill { flex: 1 1 auto; min-height: 210px; }
+/* La même carte dans le rail (340px de large): plus courte, et jamais absorbeuse - à cette largeur
+   un radar plus haut que large devient un losange étiré. */
+.chartRail { flex: none; }
+.chartRailFill { height: 232px; }
+/* Le pied d'une carte de graphique: la tendance en une phrase, exactement comme le motif shadcn
+   `charts/radar-dots`. `.dim` de business.css ne convient pas: il y a ici deux niveaux de texte. */
+.cardTrend { display: grid; gap: 2px; width: 100%; }
+.cardTrend b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cardTrend em { font-style: normal; color: var(--muted-text); font-size: 11px; }
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────
+   LE RELEVÉ. Le SEUL gabarit de la liste d'équipe, à un employé comme à trente.
+
+   ⚠⚠ IL N'Y A PLUS DE VARIANTE SELON L'EFFECTIF (voir le point 3 de l'en-tête). Le panneau garde sa
+   taille NATURELLE (`flex: 0 0 auto`) et laisse la page défiler quand la liste est longue: une
+   liste de trente personnes dans une boîte à défilement interne, sous une page qui défile déjà, est
+   un piège au doigt. Le mou de la colonne, lui, part dans le graphique de tête.
+   ───────────────────────────────────────────────────────────────────────────────────────────── */
+.rosterPanel { flex: 0 0 auto; min-height: 0; }
+
+/* ⚠ `business.css` pose des règles d'élément sur `td`/`th` (padding 9/13px, `white-space: nowrap`,
+   filet bas), écrites pour ses propres tableaux et plus spécifiques qu'une utilitaire Tailwind à
+   une classe. On ne les combat pas au site d'appel: on les redit ici, sur `.roster`, qui gagne par
+   spécificité (0,1,1) sans toucher aux autres tableaux du portail. */
+.roster td { padding-top: 9px; padding-bottom: 9px; vertical-align: middle; height: auto; }
+.roster th { padding-top: 7px; padding-bottom: 7px; }
+/* Deux valeurs par cellule (le chiffre, puis son annotation), donc l'alignement vertical se fait
+   sur le bloc et pas sur une ligne de base qui n'existe qu'au singulier. */
+.roster td > span { display: block; }
+
+/*
+ * ⚠ TOUTE LA LIGNE EST CLIQUABLE, PAR UN VRAI LIEN. Le lien du nom s'étend à la rangée entière via
+ * un pseudo-élément, la rangée portant `position: relative`. Un `onClick` sur la rangée aurait
+ * coûté trois choses: le focus clavier, l'ouverture dans un nouvel onglet, et le rendu serveur de
+ * toute la page (il aurait fallu la passer en composant client pour un gestionnaire d'événement).
+ */
+.clickRow { position: relative; cursor: pointer; }
+.rowLink { display: block; font-weight: 600; color: var(--fg); text-decoration: none; overflow-wrap: anywhere; white-space: normal; }
+.rowLink::after { content: ""; position: absolute; inset: 0; }
+.clickRow:hover .rowLink { color: var(--brand-text); text-decoration: underline; }
+
+/*
+ * UN ANCIEN EMPLOYÉ: la MÊME ligne, la même place, moins d'encre.
+ *
+ * Demande du propriétaire, verbatim: "this should still show data of someone no longer in the job.
+ * just grayed out or whatever". Donc en retrait, jamais masqué, et jamais signalé comme une anomalie:
+ * partir d'un métier est un fait de calendrier, pas une erreur à corriger.
+ *
+ * ⚠ `opacity` SUR LA RANGÉE, ET PAS UNE COULEUR EN DUR. Un gris fixe serait faux dans l'un des deux
+ * thèmes (le portail rend en clair comme en sombre, voir `business.css`), et il faudrait le redire
+ * sur chaque cellule: le chiffre, son annotation, la jauge, la pastille de rang et le mini-tracé SVG
+ * ont chacun leur propre couleur. L'opacité les atténue TOUS d'un coup, y compris le SVG, ce
+ * qu'aucune règle de couleur ne sait faire.
+ *
+ * ⚠ 0.62 ET PAS PLUS BAS. Mesuré: `--muted-text` vaut déjà 74 pour cent d'opacité en thème sombre,
+ * donc une annotation de ligne descend ici à ~46 pour cent d'un texte plein. En dessous, le texte
+ * secondaire passe sous le seuil de lisibilité alors qu'il porte des CHIFFRES EXACTS qu'on a
+ * délibérément choisi de garder affichés.
+ *
+ * Le survol rend l'opacité pleine: la ligne reste un lien vers une vraie fiche, et un lien qu'on
+ * survole doit se comporter comme un lien.
+ */
+.formerRow { opacity: 0.62; }
+.formerRow:hover, .formerRow:focus-within { opacity: 1; }
+/* `.tag.q` de business.css porte déjà le neutre (`--muted-text` sur `--line`); il ne manque que la
+   suppression de la pastille, qui n'a pas de couleur d'état à annoncer ici. */
+.formerTag i { display: none; }
+
+.rowWho { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.who { flex: 1; min-width: 0; }
+/*
+ * ⚠ L'ÉTAT DE SERVICE EST SOUS LE NOM, PAS À CÔTÉ. Une étiquette à largeur fixe ("En service",
+ * ~95px) posée à côté d'un texte à largeur variable finit toujours par gagner: mesuré à 760px, il
+ * ne restait que 72px au nom et le grade débordait de 3px. Ici les deux partagent une rangée qui
+ * SAIT passer à la ligne.
+ */
+.idline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 3px; white-space: normal; }
+/* Réutilisée par la fiche employé pour un libellé de jour (`Ses pointages`): même vocabulaire
+   visuel qu'un grade, pas de rapport sémantique avec le grade ici. */
+.grade {
+  display: block; min-width: 0; font-size: 9px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--faint); overflow-wrap: anywhere;
+}
+.rankBadge { min-width: 22px; }
+
+/* Le chiffre d'une cellule de relevé, et son annotation en dessous. Deux tailles seulement: le
+   nombre se lit, la précision s'explique. */
+.rowAmt { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--fg); }
+.cm { font-size: 11px; color: var(--muted-text); margin-top: 1px; }
+/* Jeton "positif/dû", réutilisable seul ou combiné à `.rowAmt`. */
+.ok { color: var(--ok); }
+/* La part d'équipe: jauge à gauche, pourcentage à droite, sur une seule ligne. */
+.rowShare { display: flex; align-items: center; gap: 8px; min-width: 92px; }
+.sharePct { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted-text); }
+/* Le mini-tracé d'une ligne: un SVG à taille fixe (voir `RowSpark` dans EquipeView.tsx pour
+   pourquoi il n'est pas un composant Recharts). `display: block` évite l'espace de ligne de base
+   qu'un SVG inline ajouterait sous lui, et qui décalerait la hauteur de rangée. */
+.spark { display: block; }
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────
+   LE RAIL. Ce que la colonne principale ne dit pas: qui travaille MAINTENANT, et ce qui vient de
+   se vendre.
+   ───────────────────────────────────────────────────────────────────────────────────────────── */
+/* `flex: 1` + `space-between`: dans un panneau absorbeur plus haut que sa liste, le mou passe
+   ENTRE les lignes au lieu de s'entasser sous la dernière. Sans parent flex (le panneau "En
+   service", qui n'absorbe pas) la règle est inerte, et si la liste dépasse, `space-between` n'a
+   plus de place à distribuer et `.scroll` reprend la main. */
+.rows { display: flex; flex-direction: column; flex: 1 1 auto; justify-content: space-between; }
+.row { display: flex; align-items: baseline; gap: 10px; padding: 8px 13px; border-bottom: 1px solid var(--hair); }
+.row:last-child { border-bottom: 0; }
+.rmain { flex: 1; min-width: 0; }
+.rn { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.rs { display: block; font-size: 11px; color: var(--muted-text); }
+.ra { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────
+   LA FICHE EMPLOYÉ. Un profil, pas un journal.
+   ───────────────────────────────────────────────────────────────────────────────────────────── */
+
+/* CE QU'IL VEND LE PLUS: une `Card` shadcn dont le dessin produit (`.tvis` de business.css, plaque
+   claire `--plate`, 72px) est le PREMIER enfant, flush au bord (`gap-0 py-0` au site d'appel
+   annulent le padding vertical de `Card`), et `.pbody` rajoute seulement le padding VERTICAL sous
+   le dessin - le padding horizontal reste celui de `CardContent`, pour ne rien réécrire qu'un
+   composant shadcn fixe déjà. */
+/* 140 et non 150: le panneau a un encart de 13px de chaque côté, donc un téléphone de 375px n'offre
+   plus que 301px à la grille. À 150 il ne passait qu'UNE vignette par rangée (il en fallait 310); à
+   140 il en passe deux, et la colonne principale d'un écran large en gagne une quatrième au passage.
+   Mesuré, pas estimé. */
+.prods { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); padding: 11px 13px; align-content: start; }
+.prodCard { overflow: hidden; min-width: 0; }
+.pbody { padding-top: 8px; padding-bottom: 10px; display: grid; gap: 1px; }
+.pcat { color: var(--kt); font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.pnm { font-weight: 600; font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; }
+.pqty { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.pqty em { font-style: normal; font-size: 11px; font-weight: 600; color: var(--muted-text); margin-left: 5px; letter-spacing: 0; }
+.pval { font-size: 11px; color: var(--muted-text); font-variant-numeric: tabular-nums; }
+
+/* SES TICKETS: une `Card` shadcn par ticket. Une facture est un objet, pas une rangée: référence,
+   heure, montant, détail. Le détail des articles tient sur plusieurs lignes ici, ce qu'un tableau
+   en `white-space: nowrap` interdisait, et c'est précisément l'information qui manquait le plus. */
+.tickets { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); padding: 11px 13px; align-content: start; }
+.tkCard { min-width: 0; }
+.tkBody { display: grid; gap: 3px; }
+.tkh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.tkref { font-family: var(--mono); font-size: 11px; color: var(--muted-text); font-variant-numeric: tabular-nums; }
+.tkwhen { font-size: 11px; color: var(--faint); white-space: nowrap; }
+.tkamt { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.tkdet { font-size: 11px; color: var(--muted-text); line-height: 1.4; overflow-wrap: anywhere; }
+.tkshare { font-size: 11px; font-weight: 700; color: var(--ok); font-variant-numeric: tabular-nums; }
+.tkflag { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--warn); }
+
+/* SES POINTAGES, en rail: une plage horaire par ligne. */
+/* ⚠ `display: block` SUR LES TROIS. Ce sont des <span> (la ligne est une pile de <span> dans un
+   <div>), et un élément inline ignore aussi bien la largeur que le retour à la ligne: sans ça,
+   "Lun 03/08", "18:04 à 23:41" et "Fin de service" se collaient bout à bout sur une seule ligne
+   sans même une espace entre eux. Défaut préexistant, vu au banc d'essai le 2026-08-09. */
+.shrange { display: block; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.shwhy { display: block; font-size: 11px; color: var(--muted-text); }
+.shwhy.live { color: var(--ok); font-weight: 700; }
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────
+   LE PALIER OÙ LE RAIL PASSE SOUS LA COLONNE PRINCIPALE. Empilé, l'absorbeur rend la main: il n'y a
+   plus de colonne voisine à rejoindre, donc rien à absorber, et un défilement interne dans une page
+   qui défile déjà est un piège au doigt.
+
+   ⚠ 1280px ET NON 1080px COMME `.split`, ET C'EST UNE DÉVIATION ASSUMÉE. `.split` sépare une LISTE
+   d'un panneau de détail; cette page sépare un TABLEAU À HUIT COLONNES d'un rail. Le palier se
+   choisit sur la largeur minimale du CONTENU, pas sur une valeur à recopier: à 1081px, sortir le
+   rail ramène la colonne principale de 796 à 443px, ce qui ne tient plus le relevé. 1280 est la
+   première largeur où les deux tiennent ensemble, et c'est aussi un palier Tailwind standard (`xl`),
+   donc rien d'inventé. Les colonnes du relevé qui apparaissent APRÈS ce palier sont réglées en
+   conséquence, voir le commentaire au site d'appel dans EquipeView.tsx.
+   ───────────────────────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 1280px) {
+  .work { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .absorb { flex: 0 0 auto; min-height: 0; }
+  .scroll { overflow: visible; }
+  /* Le graphique de tête n'a plus de mou à absorber une fois empilé: il reprend une hauteur fixe,
+     sans quoi `flex: 1 1 0` le réduirait à son seul `min-height` au milieu d'une page qui défile. */
+  .chartLead { flex: none; }
+  .chartFill { height: 260px; }
+}
+
+/* ---------------------------------------------------------------------------
+   LA FICHE CLIENT DANS LA CARTE D'UN TICKET (concession / garage).
+
+   Demande du proprietaire (2026-08-21). Elle repond a "qu'est-ce qui a ete fait
+   sur cette voiture, et par qui", donc elle vit DANS la carte du ticket: la
+   sortir dans une colonne a part obligerait a recroiser deux listes a l'oeil
+   pour reconstituer un seul fait.
+   --------------------------------------------------------------------------- */
+.tkfiche {
+  margin-top: 6px; padding-top: 6px;
+  border-top: 1px dashed var(--hair);
+  display: grid; gap: 3px;
+  font-size: 11px; color: var(--muted-text);
+}
+.tkfrow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px; min-width: 0; }
+.tkfrow b { color: var(--fg); font-weight: 600; }
+.tkfmods { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
+.tkfmod {
+  border: 1px solid var(--hair); border-radius: 999px;
+  padding: 1px 7px; font-size: 10px; color: var(--muted-text);
+}
+.tkfcount { font-size: 10px; color: var(--faint); }
+/* "d'origine" est une VRAIE reponse; `.tkfwarn` dit qu'on ne sait pas. Les
+   confondre est le defaut que toute cette fiche existe pour eviter. */
+.tkfstock { font-size: 10px; color: var(--faint); font-style: italic; }
+.tkfwarn { font-size: 10px; color: var(--warn); font-weight: 600; }
+.tkffleet {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--faint);
+}

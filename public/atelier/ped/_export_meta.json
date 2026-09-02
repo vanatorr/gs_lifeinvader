@@ -1,0 +1,145 @@
+{
+  "male": {
+    "model": "mp_m_freemode_01",
+    "glb": "male.glb",
+    "glbBytes": 1090860,
+    "primitiveCount": 4,
+    "triangleCount": 11154,
+    "vertexCount": 6801,
+    "turnsPerUnitScale": {
+      "ZONE_TORSO": 0.83935,
+      "ZONE_HEAD": 0.96682,
+      "ZONE_LEFT_ARM": 2.66648,
+      "ZONE_RIGHT_ARM": 2.65236,
+      "ZONE_LEFT_LEG": 2.45779,
+      "ZONE_RIGHT_LEG": 2.45547
+    },
+    "primitives": [
+      {
+        "component": "head",
+        "drawable": "head_000_r.ydd",
+        "primitives": 1,
+        "triangles": 2700,
+        "vertices": 1514,
+        "primitivesWithUv1": 1,
+        "texture": "head_diff_000_a_whi",
+        "textureExported": "512x512-\u003E512x512 D3DFMT_DXT1",
+        "textureIndex": 0
+      },
+      {
+        "component": "uppr",
+        "drawable": "uppr_015_r.ydd",
+        "primitives": 2,
+        "triangles": 6714,
+        "vertices": 4046,
+        "primitivesWithUv1": 2,
+        "texture": "uppr_diff_015_a_whi",
+        "textureExported": "512x512-\u003E512x512 D3DFMT_DXT1",
+        "textureIndex": 1
+      },
+      {
+        "component": "lowr",
+        "drawable": "lowr_014_r.ydd",
+        "primitives": 1,
+        "triangles": 1740,
+        "vertices": 1241,
+        "primitivesWithUv1": 1,
+        "texture": "lowr_diff_014_a_whi",
+        "textureExported": "512x512-\u003E512x512 D3DFMT_DXT1",
+        "textureIndex": 2
+      }
+    ],
+    "referenceRender": {
+      "file": "reference_male.png",
+      "decal": "decal_calibration.png",
+      "zone": "ZONE_TORSO",
+      "nameHash": "TAT_AR_008",
+      "uvPos": [
+        0.6571,
+        0.6122
+      ],
+      "scale": [
+        0.0722,
+        0.0872
+      ],
+      "rotation": 0
+    }
+  },
+  "female": {
+    "model": "mp_f_freemode_01",
+    "glb": "female.glb",
+    "glbBytes": 1024404,
+    "primitiveCount": 5,
+    "triangleCount": 11402,
+    "vertexCount": 6934,
+    "turnsPerUnitScale": {
+      "ZONE_TORSO": 1.14848,
+      "ZONE_HEAD": 0.96682,
+      "ZONE_LEFT_ARM": 2.98753,
+      "ZONE_RIGHT_ARM": 2.97207,
+      "ZONE_LEFT_LEG": 2.33818,
+      "ZONE_RIGHT_LEG": 2.32337
+    },
+    "primitives": [
+      {
+        "component": "head",
+        "drawable": "head_000_r.ydd",
+        "primitives": 1,
+        "triangles": 2700,
+        "vertices": 1514,
+        "primitivesWithUv1": 1,
+        "texture": "head_diff_000_a_whi",
+        "textureExported": "512x512-\u003E512x512 D3DFMT_DXT1",
+        "textureIndex": 0
+      },
+      {
+        "component": "uppr",
+        "drawable": "uppr_015_r.ydd",
+        "primitives": 2,
+        "triangles": 6928,
+        "vertices": 4075,
+        "primitivesWithUv1": 2,
+        "texture": "uppr_diff_015_a_whi",
+        "textureExported": "512x512-\u003E512x512 D3DFMT_DXT1",
+        "textureIndex": 1
+      },
+      {
+        "component": "lowr",
+        "drawable": "lowr_015_r.ydd",
+        "primitives": 1,
+        "triangles": 1000,
+        "vertices": 649,
+        "primitivesWithUv1": 1,
+        "texture": "lowr_diff_015_a_whi",
+        "textureExported": "512x512-\u003E512x512 D3DFMT_DXT1",
+        "textureIndex": 2
+      },
+      {
+        "component": "feet",
+        "drawable": "feet_000_r.ydd",
+        "primitives": 1,
+        "triangles": 774,
+        "vertices": 696,
+        "primitivesWithUv1": 1,
+        "texture": "feet_diff_000_a_whi",
+        "textureExported": "256x256-\u003E256x256 D3DFMT_DXT1",
+        "textureIndex": 3
+      }
+    ],
+    "referenceRender": {
+      "file": "reference_female.png",
+      "decal": "decal_calibration.png",
+      "zone": "ZONE_TORSO",
+      "nameHash": "TAT_AR_008",
+      "uvPos": [
+        0.6571,
+        0.6122
+      ],
+      "scale": [
+        0.0722,
+        0.0872
+      ],
+      "rotation": 0
+    }
+  }
+}

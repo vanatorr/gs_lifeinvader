@@ -1,0 +1,941 @@
+/*
+ * LifeInvader Entreprises - la feuille de style du portail commerces.
+ *
+ * LEVEE TELLE QUELLE de la maquette approuvee `citadel/design/business-portal-demo.html`
+ * (bloc <style>), et non reecrite: cette maquette est passee par une vingtaine d'allers-retours
+ * avec le proprietaire, et chaque valeur qui a l'air arbitraire ici a ete choisie en la regardant.
+ * La reecrire "proprement" reviendrait a refaire ces allers-retours.
+ *
+ * SEULE DIFFERENCE AVEC LA MAQUETTE: les six blocs @font-face en base64 sont retires. Ils
+ * existaient parce que la CSP d'un artifact bloque tout CDN de fontes, ce qui faisait tomber le
+ * texte en silence sur la police systeme - le "the font isnt clean" du proprietaire. Ici ils sont
+ * inutiles: l'application HEBERGE DEJA les deux memes fontes via @fontsource, importees dans
+ * src/app/layout.tsx, donc les nommer suffit.
+ *
+ * ⚠⚠ NE PAS FAIRE POINTER --sans VERS UNE VARIABLE next/font. C'est ce qui a ete fait d'abord, et
+ * ca a casse la typographie de TOUT le portail sans le moindre message. `--sans` est declaree sur
+ * `:root`; une propriete personnalisee contenant `var()` est resolue au moment ou ELLE est calculee,
+ * SUR L'ELEMENT OU ELLE EST DECLAREE. La variable de next/font, elle, n'existait que sur un <div>
+ * plus bas dans l'arbre. A hauteur de `:root` la reference etait donc introuvable, sans repli, ce
+ * qui rend la declaration entiere invalide: chaque `font-family: var(--sans)` retombait sur la
+ * police par defaut de <body>. Rien ne casse, rien ne s'affiche en rouge, la page a juste l'air
+ * d'un autre produit. Deux fontes chargees deux fois par-dessus le marche.
+ *
+ * Les graisses sont volontairement calees sur des graisses REELLES (400/500/600/700). Une valeur
+ * intermediaire comme 650 n'existe pas dans Hanken Grotesk: le navigateur la synthetise en
+ * epaississant les traits, et tout le texte devient sale. font-synthesis: none rend la faute
+ * visible au lieu de la maquiller.
+ */
+
+  /* ===========================================================================
+     LES VRAIES FONTES DE CITADEL, embarquees en base64.
+     Le CSP d'un artifact bloque tout CDN de fontes, donc un @import ou un lien
+     Google Fonts tomberait en silence sur la police systeme: c'est exactement
+     ce qui rendait le texte sale. Sous-ensemble latin uniquement (il couvre les
+     accents francais), 4 graisses de texte + 2 de chiffres.
+     =========================================================================== */
+  /* ===========================================================================
+     PRICE BOARD.
+     The loudest thing on a menu board is the price, so the price is the hero and
+     the headings stay quiet. Colour is never decoration: a hue always names a
+     category, and every business draws its categories from its OWN material.
+     No gradients, no drop shadows, no pill chrome, no universal rainbow.
+     =========================================================================== */
+  /* ⚠ `--muted-text` s'appelait `--muted` dans la maquette d'origine, et c'est la SEULE variable de
+     ce fichier renommee hors de la levee telle quelle (voir l'en-tete). Raison: le pont shadcn de
+     lib/business/theme.ts (ajoute le 2026-08-09) declare son PROPRE `--muted` sous [data-biz], au
+     sens shadcn du terme (une SURFACE, toujours accompagnee de `--muted-foreground` pour le texte
+     dessus). Les deux `<style>` ciblent la meme portee, meme specificite; celui de theme.ts arrive
+     plus tard dans le document et gagne en silence - chaque `color: var(--muted-text)` de ce fichier
+     rendait alors un texte quasi noir sur fond sombre. Mesure en navigateur reel le 2026-08-09
+     (agent de refonte pointage). Renommer ICI, pas cote pont: `--muted`/`--muted-foreground` sont
+     les noms STANDARD que les classes Tailwind de shadcn (bg-muted, text-muted-foreground) et tous
+     ses composants lisent en dur - les renommer aurait cassé shadcn sur cinq pages a la fois. */
+  :root {
+    --fg: #ece8e4;
+    --muted-text: rgba(255, 255, 255, 0.74);
+    --faint: rgba(255, 255, 255, 0.57);
+    --line: rgba(255, 255, 255, 0.17);
+    --hair: rgba(255, 255, 255, 0.10);
+    --hover: rgba(255, 255, 255, 0.05);
+    --on-k: #fff;
+    --ok: #5cbf6a; --warn: #e0a521; --bad: #f0705a;
+    --paper: #f6f0e2; --ink: #26221d; --ink2: #6b6153;
+    /* La vignette produit est TOUJOURS claire, dans les deux themes, comme le
+       papier du ticket. Deux raisons: teinter chaque vignette a 14 pct de la
+       couleur de categorie sur un fond sombre donnait des aplats bruns boueux
+       (un mur de marron et de bordeaux), et un objet dessine se lit comme une
+       vraie photo produit sur fond clair, pas sur fond noir. La matiere claire
+       devient le fil conducteur entre la fiche article et la facture. */
+    --plate: #efebe3; /* repli si une entreprise n'en definit pas */
+    --sel-mix: 22%;
+    --r: 4px;
+    --sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    /* ⚠⚠ REPLI DE MATIERE POUR LES PAGES SANS ENSEIGNE, ajoute le 2026-08-14.
+       `--bg` et `--surf` n'etaient declares QUE dans les blocs `.biz-*` et dans le <style> injecte
+       par `paletteStyle()`, donc les deux pages rendues en `data-biz="none"` - le selecteur
+       d'entreprise (/business) et la console reseau (/business/reseau) - n'en avaient AUCUN. Tout
+       `var(--bg)` / `var(--surf)` y etait invalide, donc ignore, donc transparent.
+       Ca ne se voyait pas: `.app` sans fond laissait passer celui du <body>, qui est sombre, et
+       l'oeil concluait que la page etait stylee. Ce qui l'a revele, c'est un <select> - une surface
+       NATIVE, que le navigateur peint en BLANC par defaut quand la regle CSS censee la colorer ne
+       s'applique pas, pendant que `--fg` (lui, bien defini) ecrivait le texte en clair: la liste
+       deroulante des metiers sortait en blanc sur blanc.
+       Les valeurs sont neutres et volontairement sans marque: ces deux pages ne sont pas une
+       enseigne, et leur donner les couleurs du dernier commerce visite laisserait croire qu'on est
+       encore dedans. Elles reprennent les tons neutres de globals.css pour rester coherentes avec le
+       reste de la plateforme. Une enseigne les ECRASE toujours, puisqu'elle les declare sur
+       `[data-biz="<slug>"]`, plus specifique que `:root`. */
+    --bg: #1f1f1f;
+    --surf: #262626;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --fg: #191614; --muted-text: rgba(0, 0, 0, 0.74); --faint: rgba(0, 0, 0, 0.60);
+      --line: rgba(0, 0, 0, 0.17); --hair: rgba(0, 0, 0, 0.10); --hover: rgba(0, 0, 0, 0.04);
+      --ok: #176b2b; --warn: #7a5800; --bad: #a82f1e; --sel-mix: 12%;
+      --bg: #f1efed; --surf: #ffffff;
+    }
+  }
+  :root[data-theme="light"] {
+    --fg: #191614; --muted-text: rgba(0, 0, 0, 0.74); --faint: rgba(0, 0, 0, 0.60);
+    --line: rgba(0, 0, 0, 0.17); --hair: rgba(0, 0, 0, 0.10); --hover: rgba(0, 0, 0, 0.04);
+    --ok: #176b2b; --warn: #7a5800; --bad: #a82f1e; --sel-mix: 12%;
+    --bg: #f1efed; --surf: #ffffff;
+  }
+  :root[data-theme="dark"] {
+    --fg: #ece8e4; --muted-text: rgba(255, 255, 255, 0.74); --faint: rgba(255, 255, 255, 0.57);
+    --line: rgba(255, 255, 255, 0.17); --hair: rgba(255, 255, 255, 0.10); --hover: rgba(255, 255, 255, 0.05);
+    --ok: #5cbf6a; --warn: #e0a521; --bad: #f0705a;
+    --bg: #1f1f1f; --surf: #262626;
+  }
+
+  /* --- Chaque entreprise tire ses couleurs de sa propre matiere.
+         kN  = la teinte de REMPLISSAGE (fond de puce, bouton +, contour).
+         kNt = la meme teinte en version TEXTE.
+         Les deux sont necessaires et ce n'est pas un detail: une couleur
+         choisie pour porter du blanc par-dessus est, par construction, trop
+         sombre pour servir elle-meme de texte sur un fond sombre. L'olive de
+         Cuisine et l'ardoise de Sans alcool etaient illisibles en libelle.
+         En theme clair le fond est blanc, donc kNt = kN, aucune variante. */
+
+  .biz-vigneron { --brand:#a02c48; --brand-text:#e58ba1; --k1:#a02c48; --k2:#a9762a; --k3:#6f7040; --k4:#4f6b74; --k1t:#e58ba1; --k2t:#dcaa62; --k3t:#adaf78; --k4t:#93b4be; --bg:#1a1416; --surf:#241c1f; }
+  .biz-bennys { --brand:#e2570b; --brand-text:#f79457; --k1:#e2570b; --k2:#2f7ba8; --k3:#bf9a1f; --k4:#7d868e; --k1t:#f79457; --k2t:#79b8e0; --k3t:#e2c76a; --k4t:#b6bfc7; --bg:#16181b; --surf:#1f2226; }
+  .biz-strawberry { --brand:#d92b3d; --brand-text:#ff9aa4; --k1:#d92b3d; --k2:#35793a; --k3:#c23b7a; --k4:#2b7d63; --k1t:#ff9aa4; --k2t:#8ecf92; --k3t:#eb92bd; --k4t:#7fc9b2; --bg:#241318; --surf:#30191f; }
+  .biz-ltd { --brand:#157a43; --brand-text:#72cd99; --k1:#c2601c; --k2:#157a43; --k3:#b32b39; --k4:#3a6494; --k1t:#ea9e62; --k2t:#72cd99; --k3t:#ec8894; --k4t:#8fb1da; --bg:#131b16; --surf:#1c251f; }
+
+  @media (prefers-color-scheme: light) {
+    .biz-vigneron { --brand:#8a2440; --brand-text:#8a2440; --k1:#8a2440; --k2:#8d5f18; --k3:#575831; --k4:#3f5760; --k1t:#8a2440; --k2t:#8d5f18; --k3t:#575831; --k4t:#3f5760; --bg:#f1eae1; --surf:#ffffff; }
+    .biz-bennys { --brand:#c44a06; --brand-text:#a83e04; --k1:#c44a06; --k2:#22617f; --k3:#7c6410; --k4:#5f676e; --k1t:#a83e04; --k2t:#22617f; --k3t:#7c6410; --k4t:#5f676e; --bg:#e9edf2; --surf:#ffffff; }
+    .biz-strawberry { --brand:#b0203a; --brand-text:#a01c34; --k1:#b0203a; --k2:#2c6a31; --k3:#9c2c60; --k4:#22624e; --k1t:#a01c34; --k2t:#2c6a31; --k3t:#9c2c60; --k4t:#22624e; --bg:#fdf0f3; --surf:#ffffff; }
+    .biz-ltd { --brand:#12703e; --brand-text:#12703e; --k1:#a04d13; --k2:#12703e; --k3:#95212d; --k4:#2d5079; --k1t:#a04d13; --k2t:#12703e; --k3t:#95212d; --k4t:#2d5079; --bg:#eaf2eb; --surf:#ffffff; }
+  }
+  :root[data-theme="light"] .biz-vigneron { --brand:#8a2440; --brand-text:#8a2440; --k1:#8a2440; --k2:#8d5f18; --k3:#575831; --k4:#3f5760; --k1t:#8a2440; --k2t:#8d5f18; --k3t:#575831; --k4t:#3f5760; --bg:#f1eae1; --surf:#ffffff; }
+  :root[data-theme="light"] .biz-bennys { --brand:#c44a06; --brand-text:#a83e04; --k1:#c44a06; --k2:#22617f; --k3:#7c6410; --k4:#5f676e; --k1t:#a83e04; --k2t:#22617f; --k3t:#7c6410; --k4t:#5f676e; --bg:#e9edf2; --surf:#ffffff; }
+  :root[data-theme="light"] .biz-strawberry { --brand:#b0203a; --brand-text:#a01c34; --k1:#b0203a; --k2:#2c6a31; --k3:#9c2c60; --k4:#22624e; --k1t:#a01c34; --k2t:#2c6a31; --k3t:#9c2c60; --k4t:#22624e; --bg:#fdf0f3; --surf:#ffffff; }
+  :root[data-theme="light"] .biz-ltd { --brand:#12703e; --brand-text:#12703e; --k1:#a04d13; --k2:#12703e; --k3:#95212d; --k4:#2d5079; --k1t:#a04d13; --k2t:#12703e; --k3t:#95212d; --k4t:#2d5079; --bg:#eaf2eb; --surf:#ffffff; }
+  :root[data-theme="dark"] .biz-vigneron { --brand:#a02c48; --brand-text:#e58ba1; --k1:#a02c48; --k2:#a9762a; --k3:#6f7040; --k4:#4f6b74; --k1t:#e58ba1; --k2t:#dcaa62; --k3t:#adaf78; --k4t:#93b4be; --bg:#1a1416; --surf:#241c1f; }
+  :root[data-theme="dark"] .biz-bennys { --brand:#e2570b; --brand-text:#f79457; --k1:#e2570b; --k2:#2f7ba8; --k3:#bf9a1f; --k4:#7d868e; --k1t:#f79457; --k2t:#79b8e0; --k3t:#e2c76a; --k4t:#b6bfc7; --bg:#16181b; --surf:#1f2226; }
+  :root[data-theme="dark"] .biz-strawberry { --brand:#d92b3d; --brand-text:#ff9aa4; --k1:#d92b3d; --k2:#35793a; --k3:#c23b7a; --k4:#2b7d63; --k1t:#ff9aa4; --k2t:#8ecf92; --k3t:#eb92bd; --k4t:#7fc9b2; --bg:#241318; --surf:#30191f; }
+  :root[data-theme="dark"] .biz-ltd { --brand:#157a43; --brand-text:#72cd99; --k1:#c2601c; --k2:#157a43; --k3:#b32b39; --k4:#3a6494; --k1t:#ea9e62; --k2t:#72cd99; --k3t:#ec8894; --k4t:#8fb1da; --bg:#131b16; --surf:#1c251f; }
+
+  .biz-vigneron   { --plate: #efebe3; }  /* creme, nappe de bar */
+  .biz-bennys     { --plate: #e8ecf0; }  /* gris acier, atelier */
+  .biz-strawberry { --plate: #fbe4ea; }  /* rose pale, fraise */
+  .biz-ltd        { --plate: #eaf2ea; }  /* vert pale, superette */
+
+  * { box-sizing: border-box; }
+  /* Jamais de gras ni d'italique synthetise: si une graisse manque, le
+     navigateur prend la plus proche REELLE au lieu d'epaissir les traits. */
+  html { font-synthesis: none; text-rendering: optimizeLegibility; }
+  /* La famille est posee sur body ET sur .app: sans la premiere, tout noeud hors
+     de .app (et le body lui-meme) retombe sur la serif par defaut du navigateur. */
+  html, body { margin: 0; font-family: var(--sans); }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .app {
+    background: var(--bg); color: var(--fg); font-family: var(--sans);
+    font-size: 13px; line-height: 1.45; min-height: 100vh; -webkit-font-smoothing: antialiased;
+  }
+  .cap { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+
+  /* ---------------------------------------------------------------- chassis
+     L'entete etait un fourre-tout: marque, glyphe, <select> natif, libelle
+     SIMULER, six boutons et un badge, tous au meme niveau visuel. Et le rail
+     occupait 176px pour n'y loger que deux liens.
+     Nouvelle repartition, chacun son role:
+       RAIL   = l'IDENTITE. Quelle entreprise (et son selecteur), ou l'on est,
+                qui l'on est. Tout ce qui ne change pas quand on navigue.
+       ENTETE = le banc d'essai de la demo, et rien d'autre.
+     L'entete demarre APRES le rail au lieu de traverser la fenetre: le rail
+     devient une vraie colonne d'espace de travail au lieu d'une marge. */
+  .shell { display: flex; align-items: flex-start; min-height: 100vh; }
+
+  .rail {
+    width: 236px; flex: none; position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column;
+    padding: 12px 10px; background: var(--surf); border-right: 1px solid var(--line);
+  }
+
+  /* Selecteur d'entreprise. Un <select> natif rendait cheap et jurait avec le
+     reste; il est conserve pour son comportement (clavier, mobile) mais rendu
+     invisible et etale sur un bloc dessine a la main. */
+  .ws {
+    position: relative; display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--line); border-radius: var(--r);
+    padding: 9px 10px; margin-bottom: 14px;
+  }
+  .ws:hover { background: var(--hover); }
+  .ws:focus-within { border-color: var(--brand); }
+  .wslogo { display: block; width: 27px; height: 27px; flex: none; color: var(--brand-text); }
+  .wslogo svg { width: 100%; height: 100%; display: block; }
+  .wstxt { flex: 1; min-width: 0; display: grid; gap: 1px; }
+  .wstxt b { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wstxt em { font-style: normal; font-size: 9px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--brand-text); }
+  .wsch { width: 12px; height: 12px; flex: none; color: var(--faint); }
+  .wssel { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
+
+  .navlist { display: flex; flex-direction: column; gap: 2px; }
+
+  /* Qui je suis, en bas du rail: c'est de l'identite, pas du contexte de page. */
+  .me { margin-top: auto; border-top: 1px solid var(--line); padding: 11px 4px 2px; display: grid; gap: 5px; justify-items: start; }
+  .mename { font-weight: 600; }
+  .merole { color: var(--muted-text); font-size: 11px; }
+
+  .col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .brandbar { display: flex; align-items: center; gap: 8px; padding: 2px 2px 13px; }
+  .li {
+    display: inline-block; padding: 3px 9px 4px; border-radius: 7px;
+    background: linear-gradient(180deg, #d81f27 0 52%, #a80a12 52% 100%);
+    color: #fff; font-weight: 400; font-size: 14px; line-height: 1.15; letter-spacing: -0.01em;
+  }
+  .li b { font-weight: 700; }
+  .ver { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+         color: var(--muted-text); border: 1px solid var(--line); border-radius: var(--r); padding: 2px 6px; white-space: nowrap; }
+
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--muted-text); padding: 4px 10px; font-size: 11px; font-weight: 600; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button:hover { color: var(--fg); }
+  .seg button[aria-pressed="true"] { background: var(--brand); color: var(--on-k); }
+
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px;
+    border: 1px solid currentColor; border-radius: var(--r);
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .tag i { width: 6px; height: 6px; background: currentColor; }
+  .tag.on { color: var(--ok); } .tag.warn { color: var(--warn); }
+  .tag.bad { color: var(--bad); } .tag.off { color: var(--faint); }
+  .tag.q { color: var(--muted-text); border-color: var(--line); }
+
+  .nav {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+    text-align: left; background: transparent; border: 1px solid transparent; border-radius: var(--r);
+    padding: 7px 10px; color: var(--muted-text); font-weight: 600;
+  }
+  .nav:hover:not(:disabled) { background: var(--hover); color: var(--fg); }
+  .nav[aria-current="true"] { background: var(--brand); border-color: var(--brand); color: var(--on-k); }
+  .nav:disabled { opacity: 0.34; cursor: not-allowed; }
+
+  /* Le contenu est CENTRE dans la place restante. Sans ce plafond centre, une
+     page collait au rail et laissait une bande morte a droite. */
+  .main { padding: 30px 24px 48px; }
+  .page { max-width: 1360px; margin-inline: auto; }
+
+  /* Hors produit, volontairement: on doit pouvoir regarder l'interface telle
+     qu'elle sera, sans un bandeau de reglages qui n'existera jamais en vrai. */
+  .demo {
+    position: fixed; right: 14px; bottom: 14px; z-index: 60;
+    display: grid; gap: 8px; justify-items: start; padding: 10px 11px;
+    background: var(--surf); border: 1px solid var(--line); border-radius: var(--r);
+  }
+  .demo[hidden] { display: none; }
+  .demo .cap { color: var(--faint); }
+  .demohandle {
+    position: fixed; right: 14px; bottom: 14px; z-index: 59;
+    width: 22px; height: 22px; padding: 0; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--surf); color: var(--faint);
+    font-size: 10px; font-weight: 700; line-height: 1;
+  }
+  .demohandle:hover { color: var(--fg); }
+
+  .head { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; margin-bottom: 14px; }
+  .head h1 + .sub { align-self: baseline; }
+  .head .spacer { flex: 1 1 20px; }
+  .head h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+  .head .sub { color: var(--muted-text); }
+
+  .note { border: 1px solid var(--line); border-radius: var(--r); background: var(--surf); padding: 10px 13px; color: var(--muted-text); margin-bottom: 14px; }
+  .note strong { color: var(--fg); font-weight: 600; }
+  .note.hot { border-color: var(--warn); color: var(--fg); }
+
+  /* ---------------------------------------------------------------- caisse */
+  /* Ticket a DROITE, articles a gauche et centres dans leur colonne.
+     Le cote du ticket se change ICI et nulle part ailleurs: passer les colonnes
+     a `300px minmax(0, 1fr)` et intervertir les deux `order` en dessous le met a
+     gauche, sans toucher au balisage. Le DOM garde les articles en premier, ce
+     qui est la lecture naturelle et le bon empilement sur telephone (on choisit,
+     puis on voit le total). */
+  /* La composition entiere (grille + ticket) est CENTREE et bornee ensemble.
+     Avant, la grille etait centree dans sa colonne pendant que le ticket etait
+     colle a droite d'une zone de 1800px: les deux blocs flottaient loin l'un de
+     l'autre avec un vide au milieu et un vide a gauche, et rien ne paraissait
+     voulu. Les deux colonnes forment desormais un seul bloc de 1348px centre. */
+  .caisse { display: grid; grid-template-columns: minmax(0, 1030px) 300px; gap: 18px; align-items: start; justify-content: center; }
+  .caisse > section { order: 1; min-width: 0; }
+  .caisse > .receipt { order: 2; }
+  /* La barre de filtres partage la largeur ET le centrage de la grille.
+     Sans ce conteneur commun, les puces s'etiraient sur toute la colonne pendant
+     que la grille etait centree a 1030px: les deux ne s'alignaient sur rien, ce
+     qui est exactement ce qui ne "rentrait" pas. */
+  .board { min-width: 0; }
+  .tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 13px; }
+  /* Les categories d'abord: c'est par la qu'on navigue. La recherche est
+     repoussee a droite, c'est la sortie de secours, pas l'outil principal. */
+  .cats { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .search {
+    margin-left: auto; flex: 0 1 210px; min-width: 148px;
+    background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 10px;
+  }
+  .search::placeholder { color: var(--faint); }
+  .chip {
+    border: 1px solid var(--line); background: transparent; color: var(--muted-text);
+    border-radius: var(--r); padding: 5px 11px; font-size: 11px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .chip i { width: 8px; height: 8px; background: var(--k); }
+  .chip:hover:not(:disabled) { color: var(--fg); }
+  .chip[aria-pressed="true"] { background: var(--k, var(--fg)); border-color: var(--k, var(--fg)); color: var(--onk, var(--on-k)); }
+  .chip[data-cat="Tout"][aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+  .chip[aria-pressed="true"] i { background: rgba(255, 255, 255, 0.75); }
+  .chip:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* 4 colonnes AU PLUS, et la grille est centree dans la place restante.
+     Le plafond ne vient pas d'un nombre de colonnes fige (qui etirerait chaque
+     carte sur un grand ecran) mais de la LARGEUR MAXI de la grille:
+     4 x 250 + 3 x 10 = 1030px. Au-dela, la place en trop se repartit de part et
+     d'autre via margin-inline:auto au lieu de gonfler les cartes.
+     En dessous, auto-fill retire une colonne tout seul (3 puis 2), donc la carte
+     reste dans une plage etroite au lieu de s'ecraser. */
+  /*
+   * ⚠⚠ RENOMMEE `.pgrid` LE 2026-08-09, ET LE NOM EST LE CORRECTIF. Elle s'appelait `.grid`, ce qui
+   * est AUSSI le nom de l'utilitaire Tailwind `grid` (`display: grid`), et la collision cassait en
+   * silence tout le sous-arbre /business.
+   *
+   * Le mecanisme, et il ne depend PAS de la specificite: les utilitaires Tailwind vivent dans une
+   * `@layer`, ce fichier non. En CSS, une regle HORS COUCHE bat TOUJOURS une regle en couche, quelle
+   * que soit la specificite et quel que soit l'ordre. Donc chaque element du portail portant la
+   * classe Tailwind `grid` heritait d'office de `gap: 10px` et de colonnes `auto-fill minmax(215px)`,
+   * et AUCUN utilitaire ne pouvait le corriger: `grid-cols-2`, `gap-0`, `grid-cols-1` perdaient tous,
+   * y compris ecrits juste a cote.
+   *
+   * Degats mesures avant le renommage: un `<CardHeader>` shadcn posait son titre et sa description
+   * COTE A COTE sur trois colonnes de 249px (page Equipe), et le pied de `ProductTile` demandait
+   * `grid-cols-2 gap-0` en recevant deux colonnes de 215px espacees de 10px. Rien n'erre, rien ne
+   * s'affiche en rouge: la mise en page est simplement fausse, partout, pour tout composant shadcn
+   * qui utilise une grille en interne.
+   *
+   * `.pgrid` = product grid, le seul usage voulu (la grille d'articles de la caisse). Un nom qu'aucun
+   * cadre ne revendique. Meme raison d'etre que la regle sur les collisions de noms de classe entre
+   * un module CSS et ce fichier: un nom generique dans une feuille globale est un piege qui dort.
+   */
+  .pgrid {
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  }
+  .tile {
+    border: 1px solid var(--line); border-radius: var(--r); background: var(--surf);
+    display: grid; grid-template-rows: auto 1fr auto; overflow: hidden;
+  }
+  .tile.picked { border-color: var(--k); outline: 2px solid var(--k); outline-offset: -2px; }
+  .tile.picked .step .q { color: var(--fg); }
+  .tile.dead { opacity: 0.42; }
+  .vlist {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: min(52vh, 640px);
+    overflow: auto;
+  }
+  .vrow {
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surf);
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+  }
+  .vrow.picked { border-color: var(--k); outline: 2px solid var(--k); outline-offset: -2px; }
+  .vrow .tvis { height: 48px; width: 48px; border-bottom: 0; border-radius: var(--r); }
+  .vrow .tvis.art svg { width: 36px; height: 36px; }
+  .vrow .tnm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Le visuel de l'article. Aplat de la couleur de categorie, jamais un degrade.
+     .art = visuel propre a l'article, plein et a pleine opacite.
+     .icon = repli sur l'icone de categorie, plus petit et attenue, pour que
+             "cet article n'a pas de visuel" se lise sans avoir a le dire. */
+  /* Hauteur FIXE, pas un aspect-ratio: en ratio la vignette gonflait avec la
+     largeur de colonne et mangeait la carte. Assez grand pour reconnaitre
+     l'article d'un coup d'oeil, assez court pour que le prix reste visible. */
+  .tvis { height: 116px; display: grid; place-items: center; position: relative; background: var(--plate); color: var(--k); border-bottom: 1px solid var(--line); }
+  .tvis.art svg { width: 72px; height: 72px; }
+  .tvis.icon svg { width: 36px; height: 36px; opacity: 0.4; }
+  .tvis .rup {
+    position: absolute; top: 6px; right: 6px; background: #a32d1a; color: #fff;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 6px;
+  }
+  .tbody { padding: 8px 10px 4px; display: grid; gap: 1px; align-content: start; }
+  /* Libelle de categorie: du TEXTE, donc la variante texte, jamais la teinte
+     de remplissage (illisible sur le corps sombre de la carte). */
+  .tcat { color: var(--kt); font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  /* Le nom est en pleine couleur, pas en --muted. L'idee "le prix est le heros"
+     reste vraie, mais c'est la TAILLE qui doit la porter (25px contre 13px), pas
+     un gris pale: le nom de l'article est l'information qu'on lit pour choisir,
+     l'affaiblir en contraste le rendait penible a lire. */
+  .tnm { color: var(--fg); font-weight: 600; font-size: 13px; line-height: 1.3; }
+  .tpr { font-size: 25px; font-weight: 700; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+  .tpr sup { font-size: 12px; font-weight: 600; vertical-align: super; margin-left: 2px; letter-spacing: 0; }
+  .tstk { font-size: 10px; color: var(--muted-text); }
+
+  .step { display: flex; align-items: stretch; border-top: 1px solid var(--hair); }
+  .step button { flex: none; width: 34px; border: 0; background: transparent; color: var(--muted-text); font-size: 16px; font-weight: 700; }
+  .step button:hover:not(:disabled) { background: var(--hover); color: var(--fg); }
+  .step button.plus { background: var(--k); color: var(--onk, var(--on-k)); font-size: 19px; font-weight: 700; }
+  .step button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .step .q { flex: 1; text-align: center; align-self: center; font-weight: 700; font-variant-numeric: tabular-nums; padding: 6px 0; }
+  .step .q.zero { color: var(--faint); font-weight: 500; }
+  .pop { animation: pop 0.16s ease; display: inline-block; }
+  @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+  /* ---------------------------------------------------------------- le ticket */
+  /* Le ticket est BORNE et ne scrolle que par ses LIGNES.
+     Sans cela, un ticket de 20 articles pousse le total et le bouton Facturer
+     sous le bas de l'ecran, et comme le panneau est sticky ils n'y reviennent
+     jamais: on ne peut plus encaisser. En-tete, total et bouton restent donc
+     fixes, et seule la liste defile. */
+  .receipt {
+    position: sticky; top: 76px; max-height: calc(100vh - 92px);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .paper {
+    background: var(--paper); color: var(--ink); padding: 15px 16px 12px;
+    font-family: var(--mono); font-size: 12px;
+    display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto;
+  }
+  .rlines { overflow-y: auto; min-height: 0; flex: 1 1 auto; overscroll-behavior: contain; }
+  .rh, .rs, .perf, .acts { flex: none; }
+  .perf { height: 11px; background: radial-gradient(circle at 7px 0, var(--bg) 5.5px, var(--paper) 6px) repeat-x; background-size: 14px 14px; }
+  /* display:block est OBLIGATOIRE. C'est un <span>, donc inline, et un element
+     inline IGNORE width/height: le SVG interne en width:100% se dilate alors a
+     la largeur du ticket et occupe la moitie du papier. Deja corrige une fois,
+     puis reperdu en reecrivant le bloc de chrome qui hebergeait cette regle. */
+  /* --brand et NON --brand-text: ces deux elements vivent sur le papier CREME,
+     ou c'est la teinte sombre qui contraste. La regle est le fond, pas le jeton. */
+  .rlogo { display: block; width: 26px; height: 26px; margin: 0 auto 7px; color: var(--brand); }
+  .rlogo svg, .vmini svg { width: 100%; height: 100%; display: block; }
+  .vmini { display: inline-block; width: 22px; height: 22px; vertical-align: middle; margin-right: 7px; }
+  .vmini.icon { opacity: 0.4; }
+  .rh { text-align: center; border-bottom: 1px dashed rgba(0, 0, 0, 0.28); padding-bottom: 9px; margin-bottom: 9px; }
+  .rh b { font-family: var(--sans); font-weight: 700; font-size: 14px; display: block; }
+  .rh span { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink2); }
+  .rl { display: flex; gap: 8px; padding: 3px 0; align-items: baseline; }
+  .rl .q { font-weight: 700; min-width: 26px; }
+  .rl .n { flex: 1; min-width: 0; }
+  .rl .a { font-variant-numeric: tabular-nums; }
+  .rz { text-align: center; color: var(--ink2); padding: 24px 0; font-family: var(--sans); }
+  .rs { border-top: 1px dashed rgba(0, 0, 0, 0.28); margin-top: 9px; padding-top: 8px; display: grid; gap: 2px; }
+  .rs .r { display: flex; justify-content: space-between; color: var(--ink2); }
+  .rt { display: flex; justify-content: space-between; align-items: baseline; margin-top: 7px; }
+  .rt .l { font-family: var(--sans); font-weight: 700; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; }
+  .rt .v { font-size: 27px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .stamp {
+    display: inline-block; margin: 12px 0 2px; border: 2px solid var(--brand); color: var(--brand);
+    padding: 5px 13px; font-family: var(--sans); font-weight: 700; font-size: 12px;
+    letter-spacing: 0.18em; text-transform: uppercase; transform: rotate(-5deg);
+  }
+  .rc { text-align: center; }
+  .rbig { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+  .rnote { font-family: var(--sans); color: var(--ink2); font-size: 11px; margin: 7px 0 0; }
+
+  /* La part employe vit SOUS la perforation, hors du papier. Le ticket est la
+     facture du CLIENT: ce que touche l'employe ne l'y regarde pas, et la placer
+     dessus laisserait croire qu'elle se deduit du montant a payer. */
+  .share {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    border: 1px solid var(--line); border-radius: var(--r); background: var(--surf);
+    padding: 9px 12px; margin-top: 10px;
+  }
+  .share .l { color: var(--muted-text); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .share .l em { display: block; font-style: normal; font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--faint); }
+  .share .v { font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; color: var(--ok); white-space: nowrap; }
+  .acts { padding-top: 10px; display: grid; gap: 7px; }
+  .btn { border: 1px solid var(--brand); background: var(--brand); color: var(--on-k); border-radius: var(--r); padding: 9px 13px; font-weight: 700; width: 100%; }
+  .btn:hover:not(:disabled) { filter: brightness(1.1); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn.ghost { background: transparent; border-color: var(--line); color: var(--fg); }
+  .gate { text-align: center; font-size: 11px; color: var(--warn); }
+
+  /* ---------------------------------------------------------------- figures + tables */
+  .figs { display: flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--r); background: var(--surf); margin-bottom: 14px; }
+  .fig { flex: 1 1 140px; padding: 10px 14px; border-right: 1px solid var(--hair); }
+  .fig:last-child { border-right: 0; }
+  .fig .k { color: var(--faint); }
+  .fig .v { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .fig .v.lead { color: var(--brand-text); }
+  .fig .m { font-size: 11px; color: var(--muted-text); }
+
+  .panel { border: 1px solid var(--line); border-radius: var(--r); background: var(--surf); overflow: hidden; }
+  .ph { padding: 9px 13px; border-bottom: 1px solid var(--line); color: var(--muted-text); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .tw { overflow-x: auto; }
+  /* color:inherit est OBLIGATOIRE et ce n'est pas decoratif.
+     En QUIRKS MODE (aucun <!DOCTYPE>, ce qui est le cas quand ce fichier est
+     servi tel quel, l'enveloppe de publication etant seule a fournir le
+     doctype), la feuille de style du navigateur empeche <table> d'heriter la
+     couleur de ses ancetres: elle repart a NOIR. Mesure sur la page: .tw valait
+     rgb(236,232,228) et <table> juste en dessous rgb(0,0,0), soit du texte noir
+     sur un panneau sombre, contraste 1.26. C'est le "black on black" signale.
+     Cette ligne rend le rendu identique avec ou sans doctype. */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; color: inherit; }
+  th { text-align: left; color: var(--faint); padding: 8px 13px; border-bottom: 1px solid var(--line); white-space: nowrap; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+  td { padding: 9px 13px; border-bottom: 1px solid var(--hair); white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: var(--hover); }
+  /* UNE colonne absorbe la largeur libre, et .grow dit laquelle.
+     Sans absorbeur, un tableau en width:100% repartit le surplus entre TOUTES
+     les colonnes: les chiffres flottent au hasard et ne se comparent plus
+     verticalement. Mais l'absorbeur n'est pas toujours la premiere colonne: sur
+     la page employe elle porte une reference courte, et lui donner toute la
+     largeur repliait le detail de la vente sur trois lignes. */
+  th.grow, td.grow { width: 100%; }
+  .r { text-align: right; }
+  .dim { color: var(--muted-text); font-size: 11px; }
+  strong { font-weight: 600; }
+
+  .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 22px; }
+  .bars i { width: 5px; background: var(--line); display: block; }
+  .bars i.hi { background: var(--brand); }
+
+  .sw { width: 34px; height: 19px; border-radius: var(--r); border: 1px solid var(--line); background: transparent; position: relative; padding: 0; flex: none; }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; background: var(--faint); transition: transform 0.13s ease, background 0.13s ease; }
+  .sw[aria-pressed="true"] { border-color: var(--ok); }
+  .sw[aria-pressed="true"]::after { transform: translateX(14px); background: var(--ok); }
+  .sw:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .mrow { display: flex; align-items: center; gap: 12px; padding: 10px 13px; border-bottom: 1px solid var(--hair); }
+  .mrow:last-child { border-bottom: 0; }
+  .mrow .mi { flex: 1; min-width: 0; }
+  .mrow .mn { font-weight: 600; }
+  .mrow .md { color: var(--muted-text); font-size: 11px; }
+  .org { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-text); border: 1px solid var(--line); border-radius: var(--r); padding: 2px 7px; white-space: nowrap; }
+  .org.cus { color: var(--on-k); background: var(--brand); border-color: var(--brand); }
+  .org.soon { color: var(--warn); border-color: var(--warn); }
+  .mrow.soon .mn { color: var(--muted-text); }
+
+  /* Liste a gauche, detail a droite: la meme charpente que la Caisse, pour que
+     le produit garde un rythme au lieu d'inventer une mise en page par page. */
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) 328px; gap: 14px; align-items: start; }
+  tbody tr[aria-selected="true"] { background: color-mix(in srgb, var(--brand) var(--sel-mix), transparent); }
+  tbody tr.click { cursor: pointer; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--fg); }
+  th .ar { opacity: 0.6; }
+  .kv { display: flex; justify-content: space-between; gap: 10px; padding: 7px 13px; border-bottom: 1px solid var(--hair); }
+  .kv:last-child { border-bottom: 0; }
+  .kv .k { color: var(--muted-text); min-width: 0; }
+  .kv .v { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .kv .v.pos { color: var(--ok); }
+  .delta { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .delta.up { color: var(--ok); } .delta.down { color: var(--bad); } .delta.flat { color: var(--muted-text); }
+  .pick { padding: 24px 14px; text-align: center; color: var(--muted-text); margin: 0; }
+  .subhead { border-top: 1px solid var(--line); }
+  @media (max-width: 1080px) { .split { grid-template-columns: minmax(0, 1fr); } }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; align-items: start; }
+  .foot { color: var(--faint); font-size: 11px; margin-top: 16px; }
+
+  /* La grille descend 4 -> 3 -> 2, jamais l'inverse: une rangee qui se REMPLIT
+     quand on retrecit la fenetre se lit comme un bug, meme si la place existe
+     une fois le ticket passe dessous. */
+  /* Plus de palier a 1150px: auto-fill ajuste deja le nombre de colonnes tout
+     seul. Un nombre fige ici ecraserait ce calcul et reintroduirait la bande
+     morte a droite. */
+  /* Empile: le ticket n'est plus colle, donc plus de plafond ni de defilement
+     interne, la page entiere fait le travail. */
+  @media (max-width: 940px) {
+    .caisse { grid-template-columns: minmax(0, 1fr); }
+    /* Empile: on remet les articles AVANT le ticket. Sans ce retour a l'ordre
+       du DOM, `order` laisserait un ticket vide occuper le haut de l'ecran. */
+    .caisse > section { order: 1; }
+    .caisse > .receipt { order: 2; position: static; max-height: none; }
+    .rlines { overflow: visible; }
+  }
+  @media (max-width: 730px) {
+    .shell { flex-direction: column; }
+    /*
+     * ⚠⚠ CE BLOC DOIT DEFAIRE **TOUT** CE QUE LA REGLE DE BUREAU POSE, pas seulement ce qui saute
+     * aux yeux. Corrige le 2026-08-09 (signale par l'agent mes-ventes, mesure ensuite): la version
+     * precedente remettait `width`, `position` et `padding`, mais HERITAIT en silence de trois
+     * proprietes du rail de bureau, et chacune casse la page sur telephone:
+     *
+     *   `height: 100vh`        le rail occupait TOUTE la premiere fenetre. Chaque page du portail
+     *                          commencait donc SOUS la ligne de flottaison: on ouvrait /mes-ventes
+     *                          et on voyait une colonne de navigation, rien d'autre, sans indice
+     *                          qu'il fallait faire defiler.
+     *   `flex-direction: column`  les entrees restaient EMPILEES, alors que `gap: 6px`,
+     *                          `overflow-x: auto` et le `white-space: nowrap` de `.nav` juste en
+     *                          dessous decrivent tous une barre HORIZONTALE qui defile. L'intention
+     *                          etait ecrite trois fois, la propriete qui l'applique manquait.
+     *   `border-right`         un filet vertical au bord droit d'une barre horizontale, c'est a dire
+     *                          un trait qui n'entoure rien (regle proprietaire: une boite se ferme
+     *                          sur ses quatre cotes, un trait a un seul cote SEPARE deux choses).
+     *                          Devient `border-bottom`, qui separe vraiment le rail du contenu.
+     *
+     * Aucune de ces trois n'echouait bruyamment: la page s'affichait, simplement en dessous de
+     * l'ecran. C'est exactement la classe de panne que ce fichier documente ailleurs (une
+     * declaration invalide ou heritee qui degrade en silence au lieu de casser franchement).
+     */
+    .rail {
+      width: 100%; position: static; height: auto;
+      display: flex; flex-direction: row; align-items: center;
+      gap: 6px; overflow-x: auto; padding: 10px;
+      border-right: 0; border-bottom: 1px solid var(--line);
+    }
+    .railcap { display: none; }
+    .nav { width: auto; white-space: nowrap; }
+    /* Sur telephone le plancher de 190px ne laisserait qu'UNE colonne. On le
+       baisse pour en garder deux, ce qui reste tenable au pouce.
+       (`.pgrid` depuis le 2026-08-09, voir le renommage plus haut dans ce fichier.) */
+    .pgrid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::after { transition: none !important; animation: none !important; } }
+/* ---------------------------------------------------------------------------
+   AJOUT APPLICATIF (2026-08-08), le reste du fichier est la maquette telle quelle.
+
+   Une entrée de navigation bloquée est rendue en <span class="nav off">, parce qu'une entrée
+   inaccessible ne doit pas être un lien. Mais la maquette utilisait <button class="nav" disabled>,
+   donc toute sa mise en forme passait par `.nav:disabled` - qu'un <span> ne peut pas satisfaire.
+   Résultat: une entrée bloquée s'affichait EXACTEMENT comme une entrée disponible, et son motif
+   ("prise de service requise") au même corps et à la même couleur que son propre libellé. La règle
+   qui montre-et-explique existait dans le balisage et nulle part dans le rendu.
+   --------------------------------------------------------------------------- */
+.nav.off,
+.nav[aria-disabled="true"] { opacity: 0.34; cursor: not-allowed; }
+/* Le libellé porte le sens, le motif est une annotation: ils ne peuvent pas peser pareil. */
+.nav .nl { display: block; }
+.nav .nw {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* ---------------------------------------------------------------------------
+   AJOUT CATALOGUE (2026-08-08). La maquette n'avait pas de page Catalogue
+   utilisable: elle la dessinait en TABLEAU (`viewCatalogue`, ~ligne 1313 de
+   `design/business-portal-demo.html`), avec le visuel reduit a une pastille de
+   22px dans une colonne, et aucun selecteur d'illustration nulle part. Verdict
+   du proprietaire: "the catalogue page needs to be done wayy better its ui is
+   ass, not user friendly and no way using icons for each product that are
+   premade like the ones in the html".
+
+   La page est donc refaite avec LES VIGNETTES DE LA CAISSE (.tile / .tvis /
+   .tbody, deja definies plus haut, non touchees), et ce bloc n'ajoute que ce
+   que la maquette ne contenait pas du tout: l'en-tete de rayon, la barre
+   d'actions d'une vignette, la fiche article, et la bibliotheque de dessins.
+   Rien ici ne redefinit une regle existante.
+
+   ⚠ TOUTE BOITE EST FERMEE SUR SES QUATRE COTES (regle proprietaire du
+   2026-08-05). Les seuls traits a un cote de ce bloc sont des SEPARATEURS:
+   le filet horizontal d'un titre de rayon et la barre superieure des actions
+   d'une vignette, qui divisent deux choses au lieu d'en entourer une.
+   --------------------------------------------------------------------------- */
+
+/* Le titre d'un rayon: son nom a la couleur du rayon, un filet, puis le compte.
+   `--kt` et non `--k`: c'est du TEXTE, et la teinte de remplissage est illisible
+   en lettres sur le fond du panneau (voir le commentaire de .tcat). */
+.rayon { display: flex; align-items: center; gap: 11px; margin: 20px 0 9px; min-height: 24px; }
+.board > section:first-of-type .rayon { margin-top: 0; }
+.rayon .rn { color: var(--kt, var(--fg)); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+.rayon .rn.dim { color: var(--faint); font-size: 10px; }
+.rayon .rl { flex: 1; height: 1px; background: var(--hair); }
+.rayon .rc { color: var(--faint); font-size: 11px; white-space: nowrap; }
+
+/* Les actions d'une vignette occupent la meme rangee que le pas-a-pas de la
+   caisse (.step), donc la carte garde exactement la meme silhouette d'une page
+   a l'autre. Deux boutons a parts egales plutot qu'un lien discret: la cible
+   doit rester atteignable au pouce. */
+.tact { display: flex; align-items: stretch; border-top: 1px solid var(--hair); }
+.tact button { flex: 1; border: 0; background: transparent; color: var(--muted-text); padding: 7px 6px; font-size: 11px; font-weight: 600; }
+.tact button + button { border-left: 1px solid var(--hair); }
+.tact button:hover:not(:disabled) { background: var(--hover); color: var(--fg); }
+.tact button:disabled { opacity: 0.35; cursor: not-allowed; }
+.tact button.on { color: var(--on-k); background: var(--brand); }
+
+/* L'article ouvert dans la fiche. --brand et non --k: "c'est celui que je suis
+   en train de modifier" est un etat de l'INTERFACE, pas une propriete du rayon,
+   et le peindre a la couleur du rayon le rendrait invisible dans son groupe. */
+.tile.editing { border-color: var(--brand); outline: 2px solid var(--brand); outline-offset: -2px; }
+
+/* ---------------------------------------------------------------------------
+   LA FICHE ARTICLE ET SES CHAMPS (colonne de droite du catalogue).
+
+   ⚠⚠ CE BLOC A DEJA ETE EFFACE UNE FOIS, par une ecriture qui a REMPLACE la fin
+   du fichier au lieu d'y ajouter le bloc `.ttile` ci-dessous. Rien n'a casse
+   bruyamment: sans `.fld`, un `<label class="fld"><span>Nom</span><input></label>
+   reste un element EN LIGNE parfaitement valide, donc la fiche s'affichait avec
+   le libelle colle a son champ et les phrases d'aide soudees au libelle
+   ("RayonIl decide de la couleur..."). Une regle absente ne produit aucune
+   erreur: elle produit une page qui a juste l'air ratee.
+   AJOUTER A LA FIN DE CE FICHIER, NE JAMAIS EN REECRIRE LA QUEUE.
+
+   Sont volontairement NON restaurees, leur balisage n'existant plus: `.tsh`
+   (la part employe est passee en Tailwind dans ProductTile.tsx), `.editor` (la
+   fiche est collee par `.editorCol` de catalogue.module.css) et `.artpick` /
+   `.artcell` / `.artnone` (la bibliotheque de dessins est un Popover + Command
+   shadcn depuis ArtPicker.tsx). Les remettre reintroduirait du mort.
+   --------------------------------------------------------------------------- */
+.edbody { padding: 13px; display: grid; gap: 12px; }
+.edprev { display: grid; gap: 6px; justify-items: stretch; }
+.edprev .cap { color: var(--faint); }
+.edacts { display: flex; gap: 8px; }
+.edacts .btn { width: auto; flex: 1; }
+.edmore { display: flex; flex-wrap: wrap; gap: 8px; }
+.edfoot { margin-top: 0; }
+
+/* Un champ: son libelle AU-DESSUS, jamais a cote. Une colonne de 328px ne peut
+   pas porter deux colonnes de libelles sans casser un mot sur deux. */
+.fld { display: grid; gap: 4px; min-width: 0; }
+.fld > span { color: var(--muted-text); font-size: 11px; }
+.fld > span em, .fld > em { display: block; font-style: normal; font-size: 10px; color: var(--faint); line-height: 1.35; }
+.fld input, .fld select { width: 100%; margin-left: 0; }
+/* auto-fit et non deux colonnes figees: quand la part employe est desactivee il
+   ne reste qu'un champ, qui doit prendre toute la largeur au lieu de la moitie. */
+.fldrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
+
+/* ---------------------------------------------------------------------------
+   LA CAISSE D'UN SALON: une case = un tatouage, et l'employe y tape le prix.
+
+   ⚠ LA CARTE EST LA VIGNETTE PRODUIT ORDINAIRE, PAS UNE VARIANTE. `.tile` et
+   `.tvis` sont repris tels quels (plaque claire de 116px, dessin plein a 72px),
+   parce que c'est exactement ce que le proprietaire a demande: "like normal
+   caisse item icons". Une case de salon EST un article aux yeux de l'employe,
+   elle se paie et se facture comme les autres; seul le geste change - on tape
+   un prix au lieu de choisir une quantite.
+
+   ⚠ DEUX JETS PRECEDENTS REJETES, notes ici pour ne pas y revenir: (1) une
+   plaque claire pleine hauteur a GAUCHE, qui retournait le poids de la page
+   vers la gauche et dont le dessin etait invisible faute de `toneVars` sur la
+   carte; (2) une pastille de 28px dans la ligne de titre, correcte comme repere
+   de RAYON mais pas comme vignette d'ARTICLE - ce n'etait pas le meme objet.
+
+   Ce bloc n'ajoute donc que le CHAMP DE PRIX, qui n'existe sur aucune autre
+   vignette: partout ailleurs on choisit une quantite avec un pas +/-.
+   --------------------------------------------------------------------------- */
+.ttile .tbody { padding: 8px 10px 10px; gap: 5px; }
+.ttile .tprice { display: flex; align-items: center; gap: 6px; }
+.ttile .tprice input {
+  width: 100%; margin: 0; padding: 7px 9px;
+  font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 8px;
+}
+.ttile .tprice input:focus { outline: none; border-color: var(--k); }
+.ttile .tprice input:disabled { opacity: 0.5; }
+.ttile .tprice input.over { border-color: var(--bad, #d0453a); }
+.ttile .tprice .cur { color: var(--muted-text); font-weight: 700; font-size: 14px; }
+.ttile .tmeta { font-size: 10px; color: var(--muted-text); font-variant-numeric: tabular-nums; }
+.ttile .tmeta.bad { color: var(--bad, #d0453a); font-weight: 700; }
+
+/* ---------------------------------------------------------------------------
+   LA FICHE CLIENT DE LA CAISSE: a qui on a vendu, et sur quelle voiture.
+
+   Demande du proprietaire (2026-08-21) pour la concession et le garage.
+
+   ⚠ ELLE VIT SOUS LA PERFORATION, HORS DU PAPIER, exactement comme `.share`
+   et pour une raison voisine: le ticket est la facture du CLIENT, et la
+   paperasse du commerce n'a pas a y figurer. La poser sur `.paper` laisserait
+   croire que le client repart avec son nom, sa date de naissance et son
+   telephone imprimes dessus.
+
+   ⚠ `.receipt` est une colonne de 300px en flex avec `min-height: 0` et un
+   `.paper` qui ne scrolle QUE par ses lignes. La fiche est donc `flex: none`:
+   sans ca, cinq champs poussent le total et le bouton Facturer sous le bas de
+   l'ecran, et comme le panneau est sticky ils n'y reviennent jamais - le
+   defaut exact que le bloc `.receipt` documente deja pour les lignes.
+
+   AJOUTER A LA FIN DE CE FICHIER, NE JAMAIS EN REECRIRE LA QUEUE.
+   --------------------------------------------------------------------------- */
+.fiche {
+  flex: none;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--surf);
+  margin-top: 10px; overflow: hidden;
+}
+.fhead {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 12px; border-bottom: 1px solid var(--hair);
+}
+.fhead .cap { color: var(--muted-text); }
+/* Obligatoire se lit comme un ETAT, pas comme une alerte: c'est la regle normale
+   de cette caisse, pas une erreur. D'ou --warn en texte et aucun aplat rouge. */
+.freq { font-size: 9px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--warn); }
+.fopt { font-size: 10px; color: var(--faint); text-align: right; line-height: 1.3; }
+.fbody { padding: 10px 12px 12px; display: grid; gap: 10px; }
+/* Le meme champ que la fiche article (`.fld input`), repris tel quel pour que le
+   portail n'ait pas deux familles de champs de saisie. */
+.fin {
+  width: 100%; padding: 7px 9px;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 8px;
+  font-size: 13px;
+}
+.fin:focus { outline: none; border-color: var(--brand); }
+.fin:disabled { opacity: 0.5; }
+.fin.bad { border-color: var(--bad, #d0453a); }
+.ferr { font-size: 10px; color: var(--bad, #d0453a); line-height: 1.3; }
+.fnote { font-size: 10px; color: var(--faint); margin: 0; line-height: 1.35; }
+
+/* Le rappel de la fiche SUR le ticket emis. Sur le papier creme, donc les
+   couleurs sont celles de l'encre (`--ink`/`--ink2`), jamais les jetons de
+   surface: une teinte de theme sombre y serait invisible. */
+.rfiche {
+  margin-top: 10px; padding-top: 8px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.28);
+  display: grid; gap: 3px; text-align: left;
+}
+.rfl { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.rfl span { color: var(--ink2); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+.rfl b { font-weight: 700; text-align: right; min-width: 0; }
+/* "Plaque introuvable" doit se voir: la vente est enregistree quand meme, donc
+   rien d'autre sur ce ticket ne signale qu'il faut verifier la saisie. */
+.rfl.warn b { color: #a3341f; }
+
+/* ---------------------------------------------------------------------------
+   CIBLES TACTILES (2026-08-22). La Caisse est operee EN DIRECT pendant une
+   vente, souvent au doigt sur un second ecran ou en alt-tab: `.step button`
+   (retirer/ajouter une unite) et `.chip` (filtre de rayon) sont les commandes
+   les plus repetees de l'ecran, et leur gabarit de bureau (34px de large pour
+   le pas-a-pas, ~24px de haut pour une puce) tombe sous le plancher tactile de
+   44px que le reste du systeme applique deja ailleurs (voir `@media (pointer:
+   coarse)` dans pointage.module.css pour le meme principe). Un pointeur GROSSIER
+   (doigt, pas souris/trackpad) recoit donc des commandes plus larges; la souris
+   garde le gabarit dense de la maquette, qui reste correct pour elle.
+   Pose ICI et pas dans le `@media (max-width: 730px)` existant plus haut: la
+   cause est le TYPE DE POINTEUR, pas la largeur d'ecran (un boitier caisse
+   tactile de 1200px de large a le meme probleme qu'un telephone). */
+@media (pointer: coarse) {
+  .step button { width: 44px; }
+  .step .q { padding: 11px 0; }
+  .chip { padding: 9px 13px; }
+  .search { padding: 10px 12px; }
+  .btn { padding: 13px 13px; }
+  .tact button { padding: 11px 6px; }
+  .ttile .tprice input { padding: 11px 9px; }
+}
+
+/* ── LA CAISSE DU GARAGE (CaisseCustomsView) ───────────────────────────────────────────────────
+ *
+ * Prefixe `lc-` parce que ce fichier n'est PAS un module CSS: ses classes sont globales et courtes
+ * ("head", "btn", "q"), donc une classe de plus sans prefixe entrerait en collision avec une autre
+ * caisse sans que rien ne le signale. Le prefixe est la cloison.
+ *
+ * ⚠ Aucune valeur de couleur ecrite en dur: tout passe par les variables de l'enseigne, sinon les
+ * garages se ressembleraient tous quelle que soit leur palette (le defaut que le proprietaire avait
+ * signale sur la maquette).
+ */
+.lc-caisse { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.lc-head h1 { margin: 0; font: 600 20px/1.2 var(--sans); color: var(--fg); }
+.lc-sub { margin: 4px 0 0; font-size: 13px; color: var(--muted-text); }
+.lc-dim { color: var(--muted-text); font-size: 12px; }
+.lc-mono { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted-text); }
+
+.lc-panel {
+  background: var(--surf); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 14px; min-width: 0;
+}
+.lc-panel h2 { margin: 0 0 10px; font: 600 13px/1 var(--sans); letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted-text); }
+.lc-panel h3 { margin: 12px 0 6px; font: 600 12px/1 var(--sans); color: var(--brand); }
+
+.lc-search, .lc-field input {
+  width: 100%; box-sizing: border-box; padding: 10px 12px;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); border-radius: var(--r); font: 400 14px var(--sans);
+}
+.lc-search:focus, .lc-field input:focus { outline: 2px solid var(--brand); outline-offset: -1px; }
+
+.lc-results { list-style: none; margin: 8px 0 0; padding: 0;
+  border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.lc-results button {
+  display: flex; gap: 10px; align-items: baseline; width: 100%; text-align: left;
+  padding: 10px 12px; background: var(--surf); border: 0; border-top: 1px solid var(--hair);
+  color: var(--fg); cursor: pointer; font: 400 14px var(--sans);
+}
+.lc-results li:first-child button { border-top: 0; }
+.lc-results button:hover { background: var(--faint); }
+.lc-picked { margin: 10px 0 0; font-size: 14px; color: var(--fg); }
+
+.lc-group + .lc-group { border-top: 1px solid var(--hair); }
+.lc-tiers { list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+/* ⚠ 44px mini: cible tactile. Voir le bloc `pointer: coarse` plus haut dans ce fichier. */
+.lc-tier {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  width: 100%; min-height: 44px; padding: 8px 12px; cursor: pointer;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); border-radius: var(--r); font: 400 13px var(--sans);
+}
+.lc-tier:hover { border-color: var(--brand); }
+/* Selectionne = la couleur d'enseigne, jamais une couleur d'etat: c'est "vous etes ici". */
+.lc-tier.lc-on { background: var(--k); color: var(--on-k); border-color: var(--k); }
+.lc-tier-label { text-align: left; min-width: 0; }
+.lc-tier-price { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+
+.lc-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.lc-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lc-field > span { font-size: 12px; color: var(--muted-text); }
+
+.lc-total { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.lc-total > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lc-total strong { font: 600 24px/1 var(--sans); color: var(--fg); font-variant-numeric: tabular-nums; }
+.lc-total button {
+  min-height: 44px; padding: 0 22px; cursor: pointer;
+  background: var(--brand); color: var(--on-k);
+  border: 0; border-radius: var(--r); font: 600 14px var(--sans);
+}
+.lc-total button:disabled { opacity: .45; cursor: not-allowed; }
+
+.lc-error { margin: 0; padding: 10px 12px; border-radius: var(--r);
+  background: var(--faint); border: 1px solid var(--warn); color: var(--fg); font-size: 13px; }
+.lc-ok { margin: 0; padding: 10px 12px; border-radius: var(--r);
+  background: var(--faint); border: 1px solid var(--ok); color: var(--fg); font-size: 13px; }
+
+/* ── LES DEUX VOLETS DE CAISSE (CaisseModes: Customs / Boutique) ───────────────────────────────
+ * Meme prefixe `lc-` et meme regle que le bloc au-dessus: aucune couleur en dur, tout vient de la
+ * palette de l'enseigne. Le volet actif porte la marque pleine (`--brand`), comme le bouton
+ * Declarer: c'est la meme famille de "la ou vous etes". */
+.lc-modes-wrap { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.lc-modes { display: flex; gap: 6px; padding: 4px; border-radius: var(--r);
+  background: var(--surf); border: 1px solid var(--hair); align-self: flex-start; }
+.lc-mode {
+  padding: 9px 18px; border: 0; border-radius: calc(var(--r) - 2px); cursor: pointer;
+  background: transparent; color: var(--muted-text); font: 600 13px var(--sans);
+}
+.lc-mode:hover { color: var(--fg); }
+.lc-mode.lc-mode-on { background: var(--brand); color: var(--on-k); }
+@media (pointer: coarse) {
+  /* 44px mini: cible tactile, meme plancher que le bloc `pointer: coarse` plus haut. */
+  .lc-mode { padding: 13px 20px; }
+}

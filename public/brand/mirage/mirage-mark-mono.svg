@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="MIRAGE" fill="none" color="#C6A87C">
+  <title>MIRAGE</title>
+  <defs>
+    <path id="mmp" d="M56 176 104 50 128 118 152 50 200 176"/>
+    <clipPath id="mmsky"><rect x="0" y="0" width="256" height="156"/></clipPath>
+    <clipPath id="mmb0"><rect x="0" y="162" width="256" height="12"/></clipPath>
+    <clipPath id="mmb1"><rect x="0" y="180" width="256" height="9"/></clipPath>
+    <clipPath id="mmb2"><rect x="0" y="194" width="256" height="7"/></clipPath>
+    <clipPath id="mmb3"><rect x="0" y="205" width="256" height="5"/></clipPath>
+  </defs>
+  <g fill="none" stroke-width="24" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="1.6">
+    <g class="mirage-shimmer" clip-path="url(#mmb0)" opacity="0.58"><g transform="translate(0 0) matrix(1 0 0 -0.55 0 241.8)"><use href="#mmp" stroke="currentColor" stroke-width="16"/></g></g>
+    <g class="mirage-shimmer" clip-path="url(#mmb1)" opacity="0.4"><g transform="translate(-9 0) matrix(1 0 0 -0.55 0 241.8)"><use href="#mmp" stroke="currentColor" stroke-width="16"/></g></g>
+    <g class="mirage-shimmer" clip-path="url(#mmb2)" opacity="0.26"><g transform="translate(8 0) matrix(1 0 0 -0.55 0 241.8)"><use href="#mmp" stroke="currentColor" stroke-width="16"/></g></g>
+    <g class="mirage-shimmer" clip-path="url(#mmb3)" opacity="0.15"><g transform="translate(-6 0) matrix(1 0 0 -0.55 0 241.8)"><use href="#mmp" stroke="currentColor" stroke-width="16"/></g></g>
+    <g clip-path="url(#mmsky)"><use href="#mmp" stroke="currentColor"/></g>
+  </g>
+  <rect x="16" y="154.5" width="224" height="3" fill="currentColor"/>
+</svg>

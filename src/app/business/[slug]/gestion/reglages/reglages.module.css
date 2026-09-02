@@ -1,0 +1,370 @@
+/*
+ * REGLAGES: le reste du chrome (panneaux, cartes, interrupteurs, matrice) vient maintenant de
+ * `@/components/ui/*` (shadcn) - voir ReglagesView.tsx. Ce module ne porte plus que ce que ces
+ * primitives ne couvrent pas: le squelette de la rangée à deux panneaux, la pastille de couleur
+ * d'un rayon (il n'existe pas de composant "nuancier" shadcn), le dénominateur d'une figure du
+ * bandeau de chiffres, l'accordéon de rayon et ses animations, et l'accent du bloc de droits
+ * sensibles.
+ *
+ * ⚠ POURQUOI UN MODULE CSS ET PAS `business.css`. Le systeme de design (`design/PORTAL_DESIGN.md`
+ * §10.1) dit d'ajouter une classe manquante a `business.css`. Ce n'est pas faisable aujourd'hui:
+ * plusieurs autres pages du portail sont reecrites EN MEME TEMPS par d'autres mains, et cette feuille
+ * unique est le seul fichier partage par ces chantiers. Un module porte par sa page ne peut pas
+ * entrer en collision. Rien ici n'est specifique au mecanisme des modules CSS: le bloc peut etre
+ * recopie tel quel dans `business.css` quand les chantiers seront retombes.
+ *
+ * ⚠ AUCUNE COULEUR EN DUR. Les rayons passent par `toneVars()` (`--k`, `--kt`, `--onk`); l'etat
+ * "non enregistre"/"sensible" passe par `--warn`, deja porte par le pont shadcn de theme.ts.
+ *
+ * ⚠⚠ REFONTE IA/LISIBILITE DU 2026-08-09 (quatrieme passe, voir l'entete de ReglagesView.tsx pour
+ * le detail complet). Ajoute ici: le fondu d'ouverture de page (`.pageFade`), l'accordeon de rayon
+ * (`.rayonHead`/`.rayonChevron`/`.rayonBody`/`.rayonBodyInner`/`.rayonFade`/`.rayonPlate`/
+ * `.rayonInfo`/`.rayonLabel`) qui remplace l'ancien affichage "tout ouvert en permanence", et
+ * l'accent lateral du bloc de droits sensibles (`.hotBlock`). Toute animation ici est ecrite a la
+ * main (transition CSS ou @keyframes), jamais une dependance: consigne explicite du proprietaire,
+ * memes raisons que partout ailleurs dans ce portail (une page qui gere de l'argent et des droits
+ * d'employes ne tire pas de code tiers non relu dans son chemin d'installation).
+ *
+ * ⚠ CALIBRAGE "Shopify grade UI/UX" (meme journee, direction donnee en cours de passe). Trois
+ * consequences concretes ici, pas une vibe: (1) la liste de rayons est passee de N cartes bordees
+ * empilees a UNE SEULE carte avec des rangees separees par un simple filet horizontal - un rayon
+ * n'est plus sa propre boite, c'est une ligne dans une liste, exactement le proprietaire d'ecrans
+ * denses de Shopify (fournisseurs de paiement, utilisateurs). (2) toute transition de cette page vise
+ * 150-250ms avec une courbe standard, jamais une courbe a rebond: `.rayonBody` est passe d'un
+ * cubic-bezier "expo" (repris de Mes ventes, pense pour une barre de classement, pas un accordeon de
+ * reglages) a `ease` simple. (3) les valeurs d'espacement ajoutees ici suivent l'echelle 4px
+ * (12/16/20/36), jamais un chiffre choisi a l'oeil.
+ */
+
+/* ---------------------------------------------------------------------------
+   CHASSIS DE PAGE: deux panneaux (Modules | Rayons) sur une rangee, hauteurs
+   egales par construction, puis la matrice des Droits pleine largeur en
+   dessous (rendue par le composant `Card` qui suit dans le balisage). Squelette
+   inchange par la passe shadcn du 2026-08-09 (voir le commentaire en tete de
+   ReglagesView.tsx): cette passe a change le VOCABULAIRE des panneaux et de la
+   matrice, pas leur agencement.
+
+   560px et non 480: a 1280px la page utile fait 996px, et deux colonnes de
+   491px remettraient la grille des modules a deux colonnes, donc presque une
+   liste. A 560 la rangee passe a deux colonnes seulement a partir de ~1134px de
+   contenu, c'est-a-dire quand chaque panneau peut vraiment tenir trois cartes
+   de front.
+   --------------------------------------------------------------------------- */
+.workRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(560px, 100%), 1fr));
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+
+/* Le denominateur d'une figure ("5/6"): il appartient au chiffre, donc il garde
+   sa graisse, mais il ne doit pas peser autant que le numerateur. */
+.outOf {
+  color: var(--faint);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* LES QUATRE TONS D'UN RAYON, EN VRAIES PASTILLES DE COULEUR. Pas un composant
+   shadcn: c'est un nuancier propre a la palette DE CE COMMERCE (`--k1..k4`),
+   jamais une couleur generique. */
+.tone {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: var(--k);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  /* Precis, pas instantane-brutal: meme fourchette (150ms) que le reste des micro-interactions
+     de cette page depuis le calibrage "Shopify grade UI/UX". */
+  transition: outline-color 150ms ease, border-color 150ms ease;
+}
+.tone[aria-pressed="true"] {
+  border-color: var(--k);
+  outline: 2px solid var(--k);
+  outline-offset: -2px;
+}
+.tone:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tone {
+    transition: none;
+  }
+}
+/* 30px est sous le plancher tactile de 44px (voir le meme correctif dans business.css pour la
+   Caisse): au doigt cette pastille choisit la couleur d'un rayon, une action peu frequente mais
+   facile a manquer a ce gabarit. La souris garde 30px, correct pour elle. */
+@media (pointer: coarse) {
+  .tone {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   FONDU D'OUVERTURE DE PAGE. Une seule fois au montage, jamais rejoue: cette
+   page n'a pas de sous-vue a basculer (contrairement a Mes ventes et sa
+   periode), donc rien ne declenche de second montage qui le rejouerait.
+   --------------------------------------------------------------------------- */
+@keyframes reglagesPageFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.pageFade {
+  animation: reglagesPageFadeIn 260ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pageFade {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   L'ACCORDEON DE RAYON. Remplace l'ancien affichage "tous les rayons ouverts
+   en permanence": un seul editeur complet a la fois (voir ReglagesView.tsx,
+   `activeRayon`), le reste se reduit a une rangee de reperage.
+   --------------------------------------------------------------------------- */
+.rayonHead {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+.rayonHead:hover {
+  /* color-mix sur --k, jamais une couleur generique: le survol reste teinte PAR CE RAYON, meme
+     technique que --accent du pont shadcn (theme.ts, color-mix sur --primary). Une teinte a 6%,
+     pas 9%: un survol precis se voit sans peindre la rangee - le rappel "couleur avec parcimonie"
+     du calibrage Shopify vaut aussi pour un simple survol. */
+  background: color-mix(in srgb, var(--k) 6%, transparent);
+}
+.rayonHead:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.rayonHead:disabled {
+  cursor: default;
+}
+
+.rayonPlate {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r);
+  background: var(--plate);
+}
+/* La pastille pleine du ton, en debord sur le coin de la plaque - meme geste que le badge de rang
+   du classement (`.rrank`, mes-ventes/ventes.module.css): un repere qui se voit avant meme de lire
+   le reste de la rangee. Bordee de la couleur de fond de la page pour rester lisible sur un aplat
+   voisin de meme famille. */
+.rayonToneDot {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 2px solid var(--surf, var(--bg));
+}
+.rayonPlate svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.rayonInfo {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+}
+.rayonLabel {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rayonChevron {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--faint);
+  transition: transform 200ms ease;
+}
+.rayonChevronOpen {
+  transform: rotate(90deg);
+}
+
+/*
+ * L'ACCORDEON LUI-MEME. `grid-template-rows` de `0fr` a `1fr` anime une hauteur qu'on ne connait
+ * pas a l'avance (le contenu d'un editeur de rayon varie), sans mesure JS et sans jamais tronquer
+ * un contenu plus grand que prevu - la technique standard pour ce cas, contrairement a une
+ * `max-height` en dur qui devine.
+ *
+ * ⚠ `ease` SIMPLE, PAS UNE COURBE A REBOND. La premiere version reprenait le cubic-bezier "expo" de
+ * la barre de classement de Mes ventes (`rbar i`, ventes.module.css) - une courbe pensee pour une
+ * barre qui glisse vers sa largeur finale, pas pour un panneau de reglages qui s'ouvre. Le calibrage
+ * "Shopify grade UI/UX" est explicite: precis et immediat, jamais flashy. 200ms plutot que 220:
+ * mesure identique, mais reste dans la fourchette haute demandee (150-250ms) avec de la marge.
+ */
+.rayonBody {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease;
+  border-top: 1px solid transparent;
+}
+.rayonBody[data-open="true"] {
+  grid-template-rows: 1fr;
+  border-top-color: var(--line);
+}
+.rayonBodyInner {
+  overflow: hidden;
+  min-height: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rayonChevron {
+    transition: none;
+  }
+  .rayonBody {
+    transition: none;
+  }
+}
+
+/* Rejoue a chaque bascule de rayon actif (`key={i}` dans ReglagesView.tsx force un vrai remontage
+   React de ce contenu a chaque changement de rayon ouvert): un fondu discret qui dit "ceci est un
+   contenu different", jamais un mouvement large. 180ms et 4px (echelle 4px), pas 200ms/3px. */
+@keyframes rayonFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.rayonFade {
+  animation: rayonFadeIn 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rayonFade {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   LE BLOC DE DROITS SENSIBLES (argent, heures, donnees des collegues). Un
+   repere lateral CONSTANT plutot qu'un simple mot en majuscules au-dessus du
+   tableau: la regle proprietaire du 2026-08-05 ("une boite se ferme sur
+   quatre cotes") reserve les traits a un seul cote a la SEPARATION, jamais a
+   l'encadrement - c'est exactement ce role ici, pas une boite fermee autour
+   du bloc.
+   --------------------------------------------------------------------------- */
+.hotBlock {
+  border-left: 2px solid color-mix(in srgb, var(--warn) 55%, transparent);
+  padding-left: 12px;
+}
+
+/* ---------------------------------------------------------------------------
+   LA BANDE DE VIGNETTES "DROITS PAR GRADE" (refonte du 2026-08-09, verdict
+   direct sur la page en ligne: "Droits par grade this isnt done properly").
+   Remplace l'en-tete de colonnes d'une matrice: chaque vignette se lit seule
+   (nom, barre de progression, fraction), et n'a plus besoin de partager sa
+   largeur avec sept voisines pour tenir dans un tableau qui defile.
+   --------------------------------------------------------------------------- */
+.gradeStrip {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 2px;
+}
+
+/* Le <TabsList> lui-meme: sa hauteur par defaut (Tailwind `h-9`, pensee pour un onglet de
+   navigation compact) doit ceder devant des cartes plus hautes (nom + barre + fraction). Une regle
+   de ce fichier n'est jamais dans une @layer et gagne donc TOUJOURS sur un utilitaire Tailwind pour
+   la meme propriete (voir l'entete du fichier), donc poser `height: auto` ici suffit sans avoir a
+   deviner laquelle des classes Tailwind en conflit (`h-9` scope par groupe contre `h-auto` en
+   propre) l'aurait emporte entre elles. */
+.gradeList {
+  height: auto;
+  align-items: stretch;
+}
+
+/* Le patron: MEME GABARIT que les vignettes de grade (meme rangee, meme
+   hauteur, meme forme), pour se lire comme "l'echelon du haut de CETTE
+   liste", jamais comme une note a part au-dessus. Jamais un <TabsTrigger>:
+   il n'a pas de panneau a activer, `setGrants` le retire avant d'ecrire quoi
+   que ce soit (voir son commentaire dans catalogue.ts). Teinte de la couleur
+   DE L'ENSEIGNE (--primary, le pont shadcn de theme.ts), jamais une couleur
+   choisie a part - c'est la meme regle que le reste de la page. */
+.gradeStripBoss {
+  display: flex;
+  flex: none;
+  min-width: 148px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  border-radius: var(--radius, 6px);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  background: color-mix(in srgb, var(--primary) 7%, transparent);
+  padding: 10px 14px;
+  cursor: default;
+}
+
+/* Une vignette de grade REELLE (<TabsTrigger>, donc cliquable et au clavier).
+   Annule entierement le chrome par defaut de TabsTrigger (barre du bas,
+   `flex-1`, hauteur fixe `h-9`): cette bande a besoin d'une carte qui grandit
+   avec SON contenu (nom + barre + fraction), pas d'un onglet de navigation
+   compact. `data-[state=active]` est l'attribut que Radix pose reellement
+   sur un TabsTrigger (jamais "data-active" tel quel, qui ne correspond a
+   rien ici): le grade AFFICHE se distingue par un contour de la couleur de
+   l'enseigne, jamais par un aplat qui écraserait la barre de progression
+   posée dessus. */
+.gradeTab {
+  display: flex;
+  flex: none;
+  min-width: 128px;
+  max-width: 168px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  height: auto;
+  border-radius: var(--radius, 6px);
+  border: 1px solid var(--border);
+  background: var(--surface, var(--card));
+  padding: 10px 14px;
+  text-align: left;
+  white-space: normal;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.gradeTab:hover {
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface, var(--card)));
+}
+.gradeTab[data-state="active"] {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 9%, var(--surface, var(--card)));
+}
+/* Neutralise le repere de selection par defaut de TabsTrigger (le trait de
+   2px sous l'onglet, pense pour une barre de navigation compacte): le
+   contour de la carte ci-dessus est deja le repere ici, un second signal de
+   selection ferait doublon. */
+.gradeTab::after {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gradeTab {
+    transition: none;
+  }
+}

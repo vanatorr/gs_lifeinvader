@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="MIRAGE">
+  <title>MIRAGE</title>
+  <defs>
+    <path id="mp" d="M56 176 104 50 128 118 152 50 200 176"/>
+    <clipPath id="msky"><rect x="0" y="0" width="256" height="156"/></clipPath>
+    <clipPath id="mb0"><rect x="0" y="162" width="256" height="12"/></clipPath>
+    <clipPath id="mb1"><rect x="0" y="180" width="256" height="9"/></clipPath>
+    <clipPath id="mb2"><rect x="0" y="194" width="256" height="7"/></clipPath>
+    <clipPath id="mb3"><rect x="0" y="205" width="256" height="5"/></clipPath>
+    <linearGradient id="mg" x1="0.1" y1="0" x2="0.45" y2="1"><stop offset="0" stop-color="#F3E3C0"/><stop offset="0.44" stop-color="#C6A87C"/><stop offset="1" stop-color="#8F6C3D"/></linearGradient>
+    <linearGradient id="mr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#C6A87C" stop-opacity="0"/><stop offset="0.17" stop-color="#C6A87C" stop-opacity="0.95"/><stop offset="0.83" stop-color="#C6A87C" stop-opacity="0.95"/><stop offset="1" stop-color="#C6A87C" stop-opacity="0"/></linearGradient>
+  </defs>
+  <g fill="none" stroke-width="24" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="1.6">
+    <g class="mirage-shimmer" clip-path="url(#mb0)" opacity="0.58"><g transform="translate(0 0) matrix(1 0 0 -0.55 0 241.8)"><use href="#mp" stroke="#C6A87C" stroke-width="16"/></g></g>
+    <g class="mirage-shimmer" clip-path="url(#mb1)" opacity="0.4"><g transform="translate(-9 0) matrix(1 0 0 -0.55 0 241.8)"><use href="#mp" stroke="#C6A87C" stroke-width="16"/></g></g>
+    <g class="mirage-shimmer" clip-path="url(#mb2)" opacity="0.26"><g transform="translate(8 0) matrix(1 0 0 -0.55 0 241.8)"><use href="#mp" stroke="#C6A87C" stroke-width="16"/></g></g>
+    <g class="mirage-shimmer" clip-path="url(#mb3)" opacity="0.15"><g transform="translate(-6 0) matrix(1 0 0 -0.55 0 241.8)"><use href="#mp" stroke="#C6A87C" stroke-width="16"/></g></g>
+    <g clip-path="url(#msky)"><use href="#mp" stroke="url(#mg)"/></g>
+  </g>
+  <rect x="16" y="154.5" width="224" height="3" fill="url(#mr)"/>
+</svg>

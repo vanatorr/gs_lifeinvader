@@ -1,0 +1,104 @@
+/*
+ * CONSOLE RÉSEAU.
+ *
+ * ⚠ AUCUNE COULEUR EN DUR. Tout passe par les jetons de `business.css` (--line, --surf, --fg,
+ * --muted-text, --faint, --brand-text, --hover, --r), donc la page suit les deux thèmes sans une
+ * seule media query ici, et une enseigne visitée ne repeint pas la console.
+ *
+ * ⚠ CETTE PAGE N'A PAS D'ENSEIGNE, donc pas de palette propre: elle est rendue avec
+ * `data-biz="none"` et hérite des jetons de `:root`. C'est voulu - le réseau n'est pas un commerce,
+ * et lui donner les couleurs du dernier commerce visité laisserait croire qu'on est encore dedans.
+ */
+
+.back {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--muted-text); font-weight: 600; font-size: 12px;
+}
+.back:hover { color: var(--fg); }
+
+/* ---------------------------------------------------------------- formulaires */
+.form {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px; padding: 14px 13px;
+}
+.editCell { padding: 0 !important; background: var(--hover); white-space: normal !important; }
+.editGrid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px; padding: 14px 13px 4px;
+}
+
+.field { display: grid; gap: 5px; align-content: start; }
+.lbl {
+  color: var(--faint); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.inp {
+  width: 100%; padding: 8px 10px; border-radius: var(--r);
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  font: inherit; font-size: 13px;
+  /* La liste deroulante d'un <select> est peinte par le SYSTEME, pas par cette feuille. `color-scheme`
+     est ce qui lui dit dans quel sens la peindre; sans lui, elle suit la preference de l'OS et non le
+     theme de la page, donc un poste en clair recoit une liste claire sous un panneau sombre. `light
+     dark` la laisse suivre le theme effectif au lieu de la figer. */
+  color-scheme: light dark;
+}
+.inp:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+
+/* ⚠ CHAQUE OPTION PORTE SES PROPRES COULEURS, ET CE N'EST PAS REDONDANT AVEC `.inp`. Une <option>
+   n'herite pas du fond de son <select> dans la liste ouverte: Chrome sous Windows la peint sur une
+   surface native, donc `background` pose ici est la SEULE chose qui la colore. C'est ce qui manquait
+   quand la liste des metiers sortait en blanc sur blanc. `--surf` et non `--bg`: une liste flottante
+   est une surface posee au-dessus de la page, comme un panneau. */
+.inp option {
+  background: var(--surf);
+  color: var(--fg);
+}
+.hint { color: var(--faint); font-size: 11px; line-height: 1.35; }
+
+.formActs, .editActs {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 0 13px 14px;
+}
+.editActs { padding-top: 10px; }
+.spacer { flex: 1 1 12px; }
+
+/* ---------------------------------------------------------------- tableau */
+.rowActs { display: flex; align-items: center; gap: 10px; }
+.link {
+  background: transparent; border: 0; padding: 0;
+  color: var(--brand-text); font: inherit; font-size: 12px; font-weight: 600;
+}
+.link:hover { text-decoration: underline; }
+
+/* Le nom TECHNIQUE d'un métier se transcrit et se compare caractère par caractère (on le tape dans
+   un /setjob), donc il prend la fonte à chasse fixe. L'enseigne et le libellé du métier sont des
+   MOTS et gardent la fonte de texte - même règle que le kit CITADEL. */
+.mono { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+/* Montant declare: la valeur d'abord, son detail dessous en plus petit. `tabular-nums` aligne les
+   chiffres d'une ligne a l'autre - sans lui, une colonne d'argent se lit en zigzag. */
+.moneyCell {
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.amount {
+  display: block;
+  font-weight: 600;
+}
+.sub {
+  display: block;
+  color: var(--faint);
+  font-size: 10px;
+}
+.zero { color: var(--faint); }
+
+.none {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 26px 13px !important; color: var(--faint);
+}
+
+.foot {
+  display: flex; align-items: flex-start; gap: 7px;
+  margin: 14px 0 0; color: var(--faint); font-size: 11px; line-height: 1.5;
+}
+.foot svg { flex: none; margin-top: 2px; }

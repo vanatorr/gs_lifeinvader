@@ -1,0 +1,688 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  CITADEL token layer.
+  Palette: charcoal dispatch surfaces with ONE accent, wine #bf4a5e (owner brief 2026-07-31,
+  citadel/DESIGN_HANDOFF.md §1). Not the old dispatch blue #1E9BFF, and not the design system's
+  brighter garnet #CB3B4F - this is the value that survives a 6-hour shift.
+
+  ⚠ WINE IS CHROME, NEVER A STATUS. Nav active, selection, focus, the live dot, a filter token: wine.
+  A state a human must read - healthy / degraded / warning / info - keeps green, red, amber, blue.
+  The moment the accent starts meaning "bad" it stops meaning "you are here", and a table row wearing
+  seven competing hues tells you nothing at all.
+
+  This is the CITADEL visual pattern for every page, not a one-off paint pass.
+  Fonts: Hanken Grotesk (UI) + JetBrains Mono (data-shaped), self-hosted via @fontsource.
+  Type floor 12px, data rows 34px - density lives in row height, never font size.
+
+  ── DENSITY IS POINTER-DEPENDENT, AND THAT IS THE WHOLE TRICK ───────────────────────────────────
+  A dispatcher on a 27" monitor wants 34px rows; a thumb on a phone needs 44px or it mis-taps. Those
+  are not the same tool, but they are the same code. So every size that a finger can hit is a var
+  here, and the `@media (pointer: coarse)` block below is the ONLY place that redefines them.
+
+  This matters more than it looks: the app still carries ~600 hand-written inline `style={{}}`
+  blocks that were ported from a static mockup, and a great many of them already say
+  `height: "var(--row-h)"`. Redefining --row-h for coarse pointers therefore re-sizes rows on pages
+  that have NOT been migrated to Tailwind yet - one variable, whole-app reach. Do not "simplify"
+  these back to literals; the literal is what made the app unusable on a phone in the first place.
+
+  Inline styles cannot express a media query, a :hover, or a :focus-visible. That is the reason the
+  migration off them exists. Anything genuinely interactive belongs in a class, not a style prop.
+*/
+
+:root {
+  /* Dark-only app (see the file-top note), but nothing here ever said so to the BROWSER: without an
+     explicit color-scheme, native form controls (<select>, <input type="date"/"datetime-local">, the
+     spinner/calendar-picker chrome) style their own text and icons from the OS/browser dark-mode
+     PREFERENCE, not from this file's actual colors. An operator whose OS is set to light mode gets
+     light-mode-assuming native widget text on this app's dark backgrounds - low contrast, sometimes
+     unreadable, and entirely invisible to a code review because nothing here LOOKS wrong; it only
+     misbehaves on a machine set the other way from whoever last eyeballed it. Declaring it explicitly
+     is what lets `cadPaperCssVars` correctly flip it back to light for the one place in this app
+     that's genuinely light (the casier's paper surfaces) without depending on the visitor's OS at all. */
+  color-scheme: dark;
+
+  /* ── Design tokens, VERBATIM from Claude Design (tokens/colors,layout,typography.css). The ported
+     design components use these exact var names in inline styles, so they must exist raw here. ── */
+  --color-background: #1f1f1f;
+  --color-surface: #262626;
+  --color-card: #262626;
+  --color-surface-raised: #2e2e2e;
+  --color-border: #3d3d3d;
+  --color-input: #4c4c4c;
+  --color-foreground: #f2f0ef;
+  --color-muted-foreground: #a8a4a2;
+  --color-primary: #bf4a5e;
+  --color-primary-foreground: #fff1f2;
+  --color-ring: #bf4a5e;
+  --color-primary-a08: rgba(191, 74, 94, 0.1);
+  --color-primary-a14: rgba(191, 74, 94, 0.15);
+  --color-primary-a25: rgba(191, 74, 94, 0.3);
+
+  /* The accent as TEXT. #bf4a5e is a fill colour: against #1f1f1f it reads around 3.4:1, under the
+     4.5:1 body-text floor, so a label painted with it is legible-ish and tiring by hour three. These
+     two are the same hue lifted until they pass, and they are what a *word* in the accent must use -
+     the fill token stays for borders, dots, and tinted backgrounds. `-strong` is the emphatic rung
+     (an active nav item, a selected token's value); the plain one is the ordinary accent word. */
+  --color-primary-text: #e0929e;
+  --color-primary-text-strong: #ecb0ba;
+
+  --color-success: #76d47f;
+  --color-danger: #ff6b5a;
+  --color-destructive: #ff6b5a;
+  --color-info: #67b7ff;
+  --color-warning: #ffd45c;
+  --color-success-a12: rgba(118, 212, 127, 0.13);
+  --color-danger-a12: rgba(255, 107, 90, 0.14);
+  --color-info-a12: rgba(103, 183, 255, 0.13);
+  --color-warning-a12: rgba(255, 212, 92, 0.13);
+  --color-muted-a12: rgba(255, 255, 255, 0.07);
+
+  /* Hairline between data rows. Deliberately DARKER than --color-border: a table draws one of these
+     per row, so the border that separates a whole PANEL and the border that separates two lines of a
+     list cannot be the same value or the list reads as a grid of boxes. */
+  --color-row-border: #2c2c2c;
+
+  /* Justice CAD penal level tokens. RENAMED c/dm/dma/cr -> n1..n5 on 2026-08-21 with the San Andreas
+     code pénal, which has five levels rather than four (N1 Infraction, N2 Delit, N3 Delit grave,
+     N4 Crime, N5 Crime capital). Derived from the existing status scale so the levels sit in the
+     CITADEL palette rather than importing the document's own pastel fills: N1/N2/N4 reuse the
+     success/warning/danger tokens above, N3 is its own amber-orange literal between warning and
+     danger.
+
+     N5 is deliberately OFF the green-to-red ramp, in violet: it is not "worse red", it is the only
+     level that permanently removes a character from the game (perpetuite), and it must not read as
+     one more step of the same scale. It is also deliberately NOT the wine --color-primary, which is
+     chrome ("you are here") and never a status.
+
+     -a14 alpha companions follow the --color-primary-a14 convention for tint backgrounds
+     (RecordCard headers, level chips). */
+  --color-tier-n1: var(--color-success);
+  --color-tier-n1-a14: rgba(118, 212, 127, 0.17);
+  --color-tier-n2: var(--color-warning);
+  --color-tier-n2-a14: rgba(255, 212, 92, 0.17);
+  --color-tier-n3: #f0913f;
+  --color-tier-n3-a14: rgba(240, 145, 63, 0.17);
+  --color-tier-n4: var(--color-danger);
+  --color-tier-n4-a14: rgba(255, 77, 77, 0.17);
+  --color-tier-n5: #b07be0;
+  --color-tier-n5-a14: rgba(176, 123, 224, 0.17);
+
+  /* Justice CAD record-card header bars (_server_build/JUSTICE_CAD_BUILD_SPEC.md §5.1). These are
+     NOT the status/tier tokens above and must not be replaced by them: the reference design puts a
+     solid saturated bar behind white text, and the bright status scale (#76d47f, #ffd45c, #1e9bff)
+     lands around 2.5:1 against --foreground, well under the 4.5:1 floor. These are the same four
+     hues darkened until white text passes. The bright token stays the accent, this is the fill. */
+  --color-record-arrestation: #1a5fa8;
+  --color-record-information: #4d5761;
+  --color-record-jugement: #a3560f;
+  --color-record-effacement: #2c7a42;
+  --color-record-vente-arme: #6b3f8f;
+  --font-sans: "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --leading-tight: 1.25;
+  --leading-normal: 1.45;
+  --tracking-label: 0.05em;
+  --tracking-wordmark: 0.35em;
+  --radius-sm: 2px;
+  --topbar-h: 52px;
+  --sidebar-w: 232px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --dur-settle: 1200ms;
+  --dur-state: 150ms;
+
+  /* ── Density scale (fine pointer / desktop default) ──────────────────────────────────────────
+     Every one of these is re-declared under `@media (pointer: coarse)` further down. Read them;
+     never hardcode the pixel value at a call site. */
+  --row-h: 34px;
+  --row-h-compact: 30px;
+  --text-dense: 14px;
+
+  /* Interactive control heights. Buttons/inputs/selects/tabs read these instead of literals so a
+     touch device gets a bigger hit area without a single component knowing about touch. */
+  --control-h: 32px;
+  --control-h-sm: 26px;
+  --control-h-lg: 38px;
+
+  /* The minimum hit target. 0 on a mouse (a 20px chip is fine to click); 44px on a finger - the
+     WCAG 2.5.5 / Apple HIG floor. Applied via the `tap` utility, and via ::after expansion for
+     controls that must stay visually small (a 20px chip that is a 44px target). */
+  --tap-min: 0px;
+
+  /* iOS zooms the whole page when a focused input's font-size is under 16px. That is not a
+     preference, it is a hard Safari behaviour, and it is why forms on this panel jump. --text-field
+     is 14px on desktop for density and exactly 16px on touch to suppress it. */
+  --text-field: 14px;
+
+  /* Notch / home-indicator insets. Zero everywhere that has no notch, so unconditional use is safe. */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+
+  /* Shell metrics - referenced by the layout AND by the drawer, so they cannot drift apart. */
+  --drawer-w: 264px;
+
+  /* surfaces - charcoal ladder. These MIRROR the --color-* block above rather than running a second,
+     slightly-different palette: shadcn primitives read these names, CITADEL components read those,
+     and the two drifting apart is what made a shadcn Popover sit on a visibly different grey than the
+     panel that opened it. */
+  --background: #1f1f1f;
+  --foreground: #f2f0ef;
+  --card: #262626;
+  --card-foreground: #f2f0ef;
+  --popover: #2e2e2e;
+  --popover-foreground: #f2f0ef;
+
+  /* Backing vars for the CITADEL surface/text tokens declared at the top of this file that are NOT
+     already var-referenced through the shadcn set above. `@theme inline` below points --color-surface-
+     raised / --color-primary-text(-strong) / --color-row-border at THESE, never at a literal - a
+     literal there is dead against ANY runtime override (including a per-agency CAD theme scoping these
+     same custom properties on a wrapper, lib/cad/theme.ts), the exact bug the surrounding comment
+     already warns about for --color-surface. */
+  --surface-raised: #2e2e2e;
+  --row-border: #2c2c2c;
+  --primary-text: #e0929e;
+  --primary-text-strong: #ecb0ba;
+
+  /* the ONE active accent - wine */
+  --primary: #bf4a5e;
+  --primary-foreground: #fff1f2;
+
+  --secondary: #2e2e2e;
+  --secondary-foreground: #f2f0ef;
+
+  --muted: #262626;
+  --muted-foreground: #a8a4a2;
+
+  /* shadcn `accent` = the subtle hover/selected surface, not the brand color */
+  --accent: #363636;
+  --accent-foreground: #f2f0ef;
+
+  --destructive: #ff6b5a;
+
+  --border: #3d3d3d;
+  --input: #4c4c4c;
+  --ring: #bf4a5e;
+
+  --chart-1: #bf4a5e;
+  --chart-2: #76d47f;
+  --chart-3: #ffd45c;
+  --chart-4: #67b7ff;
+  --chart-5: #a8a4a2;
+
+  --radius: 0.1875rem; /* 3px */
+
+  /* The rail's own palette. Every entry here already mirrored a token the rest of the panel uses
+     (foreground, primary, border, ring, and accent = surface-raised) EXCEPT --sidebar itself, which
+     was #120e0e while the shipped rail rendered bg-surface (#161112) - the family was written before
+     ui/sidebar.tsx existed, so nothing consumed it and the drift was invisible. Pointed at --card
+     (= --color-surface) so `bg-sidebar` resolves to the colour the rail has always actually been:
+     the primitive styles itself correctly instead of being overridden at five call sites. */
+  /* The rail sits one step DARKER than the panel, not lighter: it is chrome the eye should slide
+     past, and lifting it competes with the data it frames. */
+  --sidebar: #1a1a1a;
+  --sidebar-foreground: #f2f0ef;
+  --sidebar-primary: #bf4a5e;
+  --sidebar-primary-foreground: #fff1f2;
+  --sidebar-accent: #2e2e2e;
+  --sidebar-accent-foreground: #f2f0ef;
+  --sidebar-border: #3d3d3d;
+  --sidebar-ring: #bf4a5e;
+}
+
+/* Dark-only app: .dark mirrors :root so both selectors resolve identically. */
+.dark {
+  --background: #1f1f1f;
+  --foreground: #f2f0ef;
+  --card: #262626;
+  --card-foreground: #f2f0ef;
+  --popover: #2e2e2e;
+  --popover-foreground: #f2f0ef;
+  --primary: #bf4a5e;
+  --primary-foreground: #fff1f2;
+  --secondary: #2e2e2e;
+  --secondary-foreground: #f2f0ef;
+  --muted: #262626;
+  --muted-foreground: #a8a4a2;
+  --accent: #363636;
+  --accent-foreground: #f2f0ef;
+  --destructive: #ff6b5a;
+  --border: #3d3d3d;
+  --input: #4c4c4c;
+  --ring: #bf4a5e;
+  /* Mirrors :root - see the note there for why the rail is darker than the panel. */
+  --sidebar: #1a1a1a;
+  --sidebar-foreground: #f2f0ef;
+  --sidebar-primary: #bf4a5e;
+  --sidebar-primary-foreground: #fff1f2;
+  --sidebar-accent: #2e2e2e;
+  --sidebar-accent-foreground: #f2f0ef;
+  --sidebar-border: #3d3d3d;
+  --sidebar-ring: #bf4a5e;
+
+  /* Mirrors :root - see the tier-token note there. Dark-only app, so this is the same value again,
+     not a second theme; kept explicit per the file's existing .dark-mirrors-:root convention. */
+  --color-tier-n1: var(--color-success);
+  --color-tier-n1-a14: rgba(118, 212, 127, 0.17);
+  --color-tier-n2: var(--color-warning);
+  --color-tier-n2-a14: rgba(255, 212, 92, 0.17);
+  --color-tier-n3: #f0913f;
+  --color-tier-n3-a14: rgba(240, 145, 63, 0.17);
+  --color-tier-n4: var(--color-danger);
+  --color-tier-n4-a14: rgba(255, 77, 77, 0.17);
+  --color-tier-n5: #b07be0;
+  --color-tier-n5-a14: rgba(176, 123, 224, 0.17);
+
+  /* Mirrors :root - see the record-card note there. */
+  --color-record-arrestation: #1a5fa8;
+  --color-record-information: #4d5761;
+  --color-record-jugement: #a3560f;
+  --color-record-effacement: #2c7a42;
+  --color-record-vente-arme: #6b3f8f;
+}
+
+/*
+  ── THE TOUCH SWITCH ──────────────────────────────────────────────────────────────────────────
+  Keyed on `pointer: coarse` - the PRIMARY input device - not on a width breakpoint. This is
+  deliberate and the distinction is load-bearing:
+
+    - A 1024px-wide iPad is a finger. A 1024px browser window on a desktop is a mouse. A width
+      query cannot tell those apart and would give the desktop user tablet-sized rows.
+    - A phone held in landscape is 844px wide but still a thumb.
+
+  So: WIDTH decides LAYOUT (how many columns fit), POINTER decides SIZE (how big a target must be).
+  Mixing the two is what produces a panel that is either cramped on a tablet or bloated on a laptop.
+
+  `any-pointer: fine` excludes hybrids (a Surface with a mouse attached, an iPad with a trackpad):
+  those have a precise pointer available, so they keep the dense desktop scale.
+*/
+@media (pointer: coarse) and (not (any-pointer: fine)) {
+  :root {
+    --row-h: 48px;
+    --row-h-compact: 44px;
+    --control-h: 44px;
+    --control-h-sm: 40px;
+    --control-h-lg: 48px;
+    --tap-min: 44px;
+    --text-field: 16px; /* exactly 16 - anything lower re-enables the iOS focus zoom */
+  }
+}
+
+/*
+  Respect the OS "reduce motion" setting. An ops tool that someone stares at for a 6-hour shift is
+  precisely where vestibular triggers matter, and every animation here is decorative-on-top-of-
+  informative: the row-settle flash tells you a row arrived, but so does the row simply being there.
+  Kept as `!important` because the ported inline styles set `animation` directly on the element, and
+  an inline style beats any stylesheet rule that isn't important.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@theme inline {
+  --font-sans: "Hanken Grotesk", system-ui, sans-serif;
+  --font-heading: "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* CITADEL semantic tokens (not shadcn's) - status + surfaces from the imported design.
+     These point at the :root vars rather than repeating literals: a hardcoded value here is how
+     `bg-surface-raised` and `style={{background:"var(--color-surface-raised)"}}` ended up two
+     different greys on the same panel. */
+  --color-surface: var(--card);
+  --color-surface-raised: var(--surface-raised);
+  --color-row-border: var(--row-border);
+  --color-success: #76d47f;
+  --color-danger: var(--destructive);
+  --color-warning: #ffd45c;
+  --color-info: #67b7ff;
+
+  /* The accent as text - see the :root note. Exposed so `text-primary-text` is a real utility and a
+     component never has to reach for the raw var in a style prop. */
+  --color-primary-text: var(--primary-text);
+  --color-primary-text-strong: var(--primary-text-strong);
+
+  /* Justice CAD penal level tokens - surfaced into Tailwind so bg-tier-n1/text-tier-n3/etc. resolve.
+     See the :root declaration above for the derivation note. */
+  --color-tier-n1: var(--color-success);
+  --color-tier-n1-a14: rgba(118, 212, 127, 0.17);
+  --color-tier-n2: var(--color-warning);
+  --color-tier-n2-a14: rgba(255, 212, 92, 0.17);
+  --color-tier-n3: #f0913f;
+  --color-tier-n3-a14: rgba(240, 145, 63, 0.17);
+  --color-tier-n4: var(--color-danger);
+  --color-tier-n4-a14: rgba(255, 77, 77, 0.17);
+  --color-tier-n5: #b07be0;
+  --color-tier-n5-a14: rgba(176, 123, 224, 0.17);
+
+  /* Surfaced into Tailwind so bg-record-arrestation etc. resolve. See the :root note. */
+  --color-record-arrestation: #1a5fa8;
+  --color-record-information: #4d5761;
+  --color-record-jugement: #a3560f;
+  --color-record-effacement: #2c7a42;
+  --color-record-vente-arme: #6b3f8f;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+
+  /* Density tokens surfaced into Tailwind's --spacing-* namespace, which generates the h-/min-h-/
+     w-/p-/gap- families. So `h-control` and `min-h-tap` are real utilities that resolve to the
+     pointer-aware vars above - the components never name a pixel. */
+  --spacing-row: var(--row-h);
+  --spacing-row-compact: var(--row-h-compact);
+  --spacing-control: var(--control-h);
+  --spacing-control-sm: var(--control-h-sm);
+  --spacing-control-lg: var(--control-h-lg);
+  --spacing-tap: var(--tap-min);
+  --spacing-drawer: var(--drawer-w);
+  --spacing-safe-b: var(--safe-b);
+  --spacing-safe-t: var(--safe-t);
+
+  /* Breakpoint the SHELL switches on (sidebar <-> drawer). Named so the layout, the drawer, and
+     any page that needs to know "am I in one-column mode" all agree on one number. */
+  --breakpoint-shell: 60rem; /* 960px */
+
+  /* CAD per-agency signage typeface (src/lib/cad/theme.ts). Defaults to the base sans so any page
+     rendered outside a themed CAD agency shell (or an agency with no theme entry) is unaffected. */
+  --font-display: var(--font-sans);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    /* Kill the 300ms tap delay and Safari's double-tap-to-zoom inside the app. The panel has no
+       pinch-zoomable content, and the delay makes every button feel broken on a phone. */
+    touch-action: manipulation;
+    /* Stop iOS from re-flowing type at its own discretion when a device rotates - a data table's
+       column widths are computed from the text, so silent inflation misaligns them. */
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 14px; /* the readable floor for an ops tool - never smaller than text-xs (12px) */
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    /* The shell owns every scroll region; letting the document itself rubber-band on iOS drags the
+       whole fixed layout (topbar included) away from the viewport edge. */
+    overscroll-behavior-y: none;
+  }
+
+  /*
+    NO HORIZONTAL SCROLLING, GLOBALLY.
+
+    `clip`, not `hidden`, and the difference matters: `overflow-x: hidden` makes the element a
+    scroll CONTAINER, which (a) silently breaks `position: sticky` on descendants and (b) still lets
+    JS scroll it sideways, so the overflow is hidden but not gone. `clip` just clips - no scroll
+    container, sticky keeps working.
+    `overflow-y: visible` is required alongside it; the moment one axis is `clip` the other computes
+    to `auto` unless stated, which would put a second scrollbar on <html>.
+
+    This is a BACKSTOP, not a fix. Anything that overflows is still a bug (an untruncated license
+    hex, a raw garage id, a fixed-px row wider than a phone) and must be fixed at the source with
+    min-w-0 + truncate/break - this rule only guarantees a stray one can never drag the whole panel
+    sideways, which on a phone is the difference between "one column looks off" and "the entire UI
+    slides around under your thumb".
+  */
+  html,
+  body {
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  /*
+    THE iOS ZOOM FIX. Safari zooms the viewport when a focused form control's computed font-size is
+    below 16px, then leaves you zoomed in with the layout shifted. --text-field is 14px on a mouse
+    and exactly 16px on a coarse pointer, so density survives on desktop and the zoom never fires on
+    a phone. This is a base rule rather than a component rule on purpose: it must also cover the raw
+    <input>/<select>/<textarea> elements still living inside the not-yet-migrated inline-styled
+    pages, which never pass through a ds.tsx primitive.
+  */
+  input,
+  select,
+  textarea {
+    font-size: var(--text-field);
+  }
+
+  /* A visible, on-brand focus ring for keyboard users only - :focus-visible, so a mouse click does
+     not paint a ring, but Tab does. The ported components had no focus styling whatsoever. */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background: var(--color-primary-a25);
+  }
+
+  /*
+    ── CUSTOM SCROLLBARS ──────────────────────────────────────────────────────────────────────────
+    The default Windows/Chrome scrollbar is a 17px light-grey slab. On a dark charcoal ops panel
+    it is the single loudest thing on screen, and it appears on every one of the app's many nested
+    scroll regions (nav, log table, each detail column) - so it reads as chrome-on-chrome clutter.
+
+    Two declarations because the two standards are both live:
+      - `scrollbar-width`/`scrollbar-color` - the CSS standard. Firefox, and Chrome 121+. Only
+        takes two colours and thin/auto, nothing else.
+      - `::-webkit-scrollbar-*` - the old WebKit pseudo-elements. Still what Chrome/Edge/Safari
+        actually honour for detailed styling, and they OVERRIDE scrollbar-width when present.
+    Declaring both is not redundant; it is the coverage.
+
+    NOT touched on coarse pointers: mobile browsers use overlay scrollbars that already take no
+    layout space and fade out. Styling them is pointless and `scrollbar-gutter` would waste 10px of
+    a 375px screen.
+  */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-input) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    /* background-clip: padding-box + a transparent border is the trick that gives the thumb inset
+       padding - WebKit has no margin/inset property for it. Without it the thumb touches both edges
+       of the track and reads as a solid bar rather than a handle. */
+    background-color: var(--color-input);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-muted-foreground);
+    background-clip: padding-box;
+  }
+  /* Where an x- and y-scrollbar meet; unstyled it renders as a light grey square. */
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* ── Utilities ──────────────────────────────────────────────────────────────────────────────── */
+
+/*
+  `tap` - guarantees a 44px hit target on touch WITHOUT changing how big the control looks. The
+  pseudo-element is the target; the visual box stays 20px. This is how a dense chip row and a
+  thumb can coexist. On a fine pointer --tap-min is 0, so the ::after collapses to nothing and the
+  desktop layout is byte-identical to before.
+*/
+@utility tap {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    translate: -50% -50%;
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* Scrollbars are noise on a dense surface, but the region must still scroll. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
+  A horizontally-scrolling region that keeps its own momentum and does not hand the gesture back to
+  the page when it hits an edge (otherwise swiping a wide table sideways on iOS navigates back).
+*/
+@utility scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe-area padding for the things that actually touch a screen edge. */
+@utility pb-safe {
+  padding-bottom: calc(var(--space-2) + var(--safe-b));
+}
+@utility pt-safe {
+  padding-top: calc(var(--space-2) + var(--safe-t));
+}
+@utility px-safe {
+  padding-left: calc(var(--space-3) + var(--safe-l));
+  padding-right: calc(var(--space-3) + var(--safe-r));
+}
+
+/* Motion - verbatim from the design (tokens/utilities.css). Communicates STATE, never decoration. */
+@keyframes cit-settle {
+  0% {
+    background: var(--color-primary-a14);
+  }
+  100% {
+    background: transparent;
+  }
+}
+@keyframes cit-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes cit-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cit-slide-in {
+  0% {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes cit-fade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+/* A rail arriving from the edge it is anchored to (detail rail, facet overlay). 140ms - a state
+   change, not a transition anyone should have time to watch. */
+@keyframes cit-rail-in {
+  0% {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* A sheet rising into place (bulk bar, snapshot, restore). */
+@keyframes cit-sheet-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+::selection {
+  background: var(--color-primary-a25);
+}

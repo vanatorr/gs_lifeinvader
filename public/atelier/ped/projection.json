@@ -1,0 +1,183 @@
+{
+  "$schema": "https://grandside.internal/atelier/ped-projection-1",
+  "version": 1,
+  "generator": "gs-texture-optimizer tools/PedGltfExport (W2a ped extraction, 2026-08-26)",
+  "gameBuild": "GTA V Legacy 1.0.231.0",
+  "source": "Reverse-engineered from the desktop tool's shipped projection: src/GsTexOpt.App/Tattoos/TattooProjection.cs, GameAssets/PedDecorationUv.cs, GameAssets/PedDecorationAspect.cs. Numbers are MEASURED off the real freemode meshes, not invented.",
+
+  "summary": "A tattoo's placement (uvPos, scale, rotation) is NOT a rectangle on the skin texture. It is a rectangle in the ped's DECORATION UNWRAP, a second UV set Rockstar baked into the mesh. That unwrap is exported as TEXCOORD_1 in male.glb / female.glb. To place a decal the way GTA does: for every vertex, read its TEXCOORD_1, map it into the decal's own [0,1] art space with the toDecal transform below, and paint where that lands inside [0,1]. Left and right limbs live in DIFFERENT bands of this unwrap, which is why one arm can be inked and the other left clean even though both arms share every skin texel.",
+
+  "assets": {
+    "male": "male.glb",
+    "female": "female.glb",
+    "calibrationDecal": "decal_calibration.png",
+    "referenceMale": "reference_male.png",
+    "referenceFemale": "reference_female.png"
+  },
+
+  "coordinateSpace": {
+    "note": "glb positions are in METRES, Y-up. Derived from GTA's Z-up model space by (x, y, z) -> (x, z, -y).",
+    "up": "+Y",
+    "front": "+Z (the ped faces +Z; a camera on +Z sees the face). glTF cameras look down -Z, so to see the face place the camera at +Z looking toward -Z, or rotate the model 180 deg about Y.",
+    "handedness": "right-handed",
+    "winding": "original RAGE winding, preserved (the axis map has positive determinant). All materials are doubleSided, so face culling is not required.",
+    "bindPose": "static A-pose, no skinning. No animations, no skeleton."
+  },
+
+  "uvChannels": {
+    "TEXCOORD_0": "diffuse (skin) unwrap. Used by the embedded skin material only. NOT used for tattoo placement.",
+    "TEXCOORD_1": "the DECORATION unwrap. THIS is the coordinate space uvPos/scale are written in. Present on every skin primitive. This is the channel the projection math below reads.",
+    "warning": "Do not confuse the two. TEXCOORD_0 is a normal skin unwrap in [0,1]; TEXCOORD_1's v is negative and banded (see decorationUnwrap), and its u wraps."
+  },
+
+  "decorationUnwrap": {
+    "description": "How to read a vertex's raw TEXCOORD_1 = (rawU, rawV) into per-zone 'along' and 'around' coordinates.",
+    "constants": {
+      "bandSpacing": 2.0,
+      "uOrigin": 1.0,
+      "bandTolerance": 0.5
+    },
+    "along": {
+      "formula": "along = -(bandSpacing * zoneId) - rawV",
+      "meaning": "position ALONG the limb. 0 = far end (hand, foot, TOP of the head), 1 = at the body (shoulder, hip, neck). Monotonic.",
+      "inZoneTest": "a vertex belongs to a zone's band when its along for that zone is in [-bandTolerance, 1 + bandTolerance] i.e. [-0.5, 1.5]. The next band is a whole 2.0 away, so this can never reach it."
+    },
+    "around": {
+      "formula": "around = rawU - uOrigin",
+      "meaning": "position AROUND the limb, in TURNS. Legitimately outside [0,1]: it wraps, and the seam is stored twice in the mesh.",
+      "torsoLandmarks": "on the torso, around 0.00 is the ped's left, 0.22 the back, 0.48 the right, 0.73 the front. So ZONE_FRONT art sits near around 0.73 and back art near around 0.23; both are band 0."
+    },
+    "bands": {
+      "note": "band top v = -(bandSpacing * zoneId); the band core (along in [0,1]) is rawV in [top-1, top]. Odd v-bands between them are deliberately empty so a decal overflowing a limb bleeds into nothing rather than onto another limb.",
+      "byZoneId": {
+        "0": { "name": "torso", "rawVCore": [-1, 0] },
+        "1": { "name": "head", "rawVCore": [-3, -2] },
+        "2": { "name": "leftArm", "rawVCore": [-5, -4] },
+        "3": { "name": "rightArm", "rawVCore": [-7, -6] },
+        "4": { "name": "leftLeg", "rawVCore": [-9, -8] },
+        "5": { "name": "rightLeg", "rawVCore": [-11, -10] }
+      }
+    }
+  },
+
+  "placementInput": {
+    "note": "These are the fields a tattoo carries in gs_overlays.xml and in citadel tattooMeta (uvPosX/Y, scaleX/Y, rotation).",
+    "uvPos": "CENTRE of the decal in decoration space. uvPos.x is the centre AROUND the limb (turns, may be outside [0,1], wraps); uvPos.y is the centre ALONG the limb (0 far end .. 1 body).",
+    "scale": "FULL width and height (not half), BOTH in units of the zone's LENGTH (fraction of the limb's length). Equal scale.x and scale.y paint a SQUARE patch on the body. scale.x is NOT turns; the aspectCorrection converts it to turns.",
+    "scaleSign": "a NEGATIVE scale.x mirrors the art (that is how the game authors the same tattoo for the opposite limb). Never take an absolute value; carry the sign through.",
+    "rotationDegrees": "clockwise turn of the art about its own centre."
+  },
+
+  "aspectCorrection": {
+    "why": "The decoration unwrap is a cylinder per zone: u goes once AROUND, v runs the LENGTH. A turn and a unit of length are not the same distance (an arm is ~28cm round but ~91cm long). scale is written in LENGTH units for BOTH axes, so scale.x must be multiplied to become turns-around, or every limb tattoo comes out ~3x too tall.",
+    "formula": "extentAround = scale.x * turnsPerUnitScale[gender][zoneName];  extentAlong = scale.y",
+    "turnsPerUnitScale": {
+      "note": "MEASURED off each real mesh (median perimeter-per-length over slices). Male and female genuinely differ; use the right table. head is the same for both here.",
+      "male":   { "ZONE_TORSO": 0.83935, "ZONE_FRONT": 0.83935, "ZONE_HEAD": 0.96682, "ZONE_LEFT_ARM": 2.66648, "ZONE_RIGHT_ARM": 2.65236, "ZONE_LEFT_LEG": 2.45779, "ZONE_RIGHT_LEG": 2.45547 },
+      "female": { "ZONE_TORSO": 1.14848, "ZONE_FRONT": 1.14848, "ZONE_HEAD": 0.96682, "ZONE_LEFT_ARM": 2.98753, "ZONE_RIGHT_ARM": 2.97207, "ZONE_LEFT_LEG": 2.33818, "ZONE_RIGHT_LEG": 2.32337 },
+      "precision": "The RATIO of the two axes is pinned hard by the corpus (every zone authored square); the absolute constant is good to about a fifth (a limb is a cone, not a cylinder, so 'one turn' has no single value). Placements land within ~a quarter of square, versus 2.5-3.5x out without this. Do not read more precision into these than that."
+    },
+    "minScale": "clamp |extent| to at least 1e-4 (preserving sign) so a zero mid-edit does not divide to infinity."
+  },
+
+  "toDecal": {
+    "description": "Map one vertex from decoration space into the decal's own [0,1] art space, where (0,0) is the TOP-LEFT of the art and (1,1) the bottom-right (matching the calibration/decal PNG's pixel (0,0) = top-left).",
+    "inputs": "around = around(rawU); along = along(rawV, zoneId); uvPos; extentAround; extentAlong; rotationDegrees.",
+    "steps": [
+      "x = (around - uvPos.x) / extentAround",
+      "y = (along  - uvPos.y) / extentAlong",
+      "angle = -rotationDegrees * PI / 180   (note the NEGATIVE sign)",
+      "rx = x * cos(angle) + y * sin(angle)",
+      "ry = -x * sin(angle) + y * cos(angle)",
+      "decalU = rx + 0.5",
+      "decalV = 0.5 - ry            (VERTICAL FLIP: along counts up-the-limb toward the body while texture v counts down from its top row; without this every tattoo is upside down)"
+    ],
+    "sample": "paint the decal texture at (decalU, decalV). Points outside [0,1] are OUTSIDE the art: clamp-to-transparent / do not tile (the desktop uses TileMode.None). Alpha in the art is honoured (a tattoo sheet is mostly transparent)."
+  },
+
+  "seamHandling": {
+    "why": "around wraps, so each corner has infinitely many valid values a whole turn apart, and the seam is stored twice. A triangle straddling the seam tears across the whole limb unless its corners are brought to the same branch.",
+    "nearestBranch": "branch(u, near) = u + round(near - u)",
+    "rule": "per triangle: snap corner0's around to the branch nearest uvPos.x (around0 = branch(around0, uvPos.x)); then snap corner1 and corner2 to the branch nearest around0 (around1 = branch(around1, around0), around2 = branch(around2, around0))."
+  },
+
+  "triangleSelection": {
+    "note": "For a decal-shell / atlas approach that renders per triangle (what the desktop does).",
+    "candidate": "keep a triangle if ANY of its 3 corners is in-zone (along in [-0.5, 1.5] for this zone's zoneId). This keeps a decal running onto a seam, while a triangle on the OTHER limb is two whole bands away and never qualifies.",
+    "touchTest": "after toDecal on all 3 corners, keep only if the decal-UV bounding box intersects [0,1]x[0,1] AND spans no more than 4 decal-widths on either axis (a larger span is a seam/wrap artefact that would streak the art).",
+    "shellOffsetMetres": 0.002
+  },
+
+  "zones": [
+    {
+      "id": "ZONE_TORSO", "zoneId": 0, "band": "torso", "rawVCore": [-1, 0],
+      "turnsPerUnitScale": { "male": 0.83935, "female": 1.14848 },
+      "meshPrimitives": "any skin primitive with TEXCOORD_1 whose vertices fall in band 0 (chiefly the uppr drawable; the lowr waistband contributes a few). Selection is by along-in-band, never by primitive.",
+      "notes": "ZONE_TORSO and ZONE_FRONT are the SAME game band (zoneId 0). They differ only by where uvPos.x sits AROUND the torso (back near 0.23, front near 0.73), not by band."
+    },
+    {
+      "id": "ZONE_FRONT", "zoneId": 0, "band": "torso", "rawVCore": [-1, 0],
+      "turnsPerUnitScale": { "male": 0.83935, "female": 1.14848 },
+      "meshPrimitives": "same as ZONE_TORSO (band 0).",
+      "notes": "Alias of ZONE_TORSO for the band and the projection math. citadel keeps both ids because the collection data does; zoneId is not unique."
+    },
+    {
+      "id": "ZONE_HEAD", "zoneId": 1, "band": "head", "rawVCore": [-3, -2],
+      "turnsPerUnitScale": { "male": 0.96682, "female": 0.96682 },
+      "meshPrimitives": "the head drawable's skin geometry (band 1).",
+      "notes": "along 0 = TOP of the head, along 1 = neck. So a forehead piece sits near along 0.3 (e.g. TAT_AR_012 uses uvPos.y 0.30)."
+    },
+    {
+      "id": "ZONE_LEFT_ARM", "zoneId": 2, "band": "leftArm", "rawVCore": [-5, -4],
+      "turnsPerUnitScale": { "male": 2.66648, "female": 2.98753 },
+      "meshPrimitives": "uppr drawable, band 2 vertices.",
+      "notes": "along 0 = hand, along 1 = shoulder. Left is the PED's own left."
+    },
+    {
+      "id": "ZONE_RIGHT_ARM", "zoneId": 3, "band": "rightArm", "rawVCore": [-7, -6],
+      "turnsPerUnitScale": { "male": 2.65236, "female": 2.97207 },
+      "meshPrimitives": "uppr drawable, band 3 vertices.",
+      "notes": "Mirror of the left arm; the two arms are in DIFFERENT bands, which is what lets one be inked and the other clean."
+    },
+    {
+      "id": "ZONE_LEFT_LEG", "zoneId": 4, "band": "leftLeg", "rawVCore": [-9, -8],
+      "turnsPerUnitScale": { "male": 2.45779, "female": 2.33818 },
+      "meshPrimitives": "lowr drawable (male) / lowr + feet (female), band 4 vertices.",
+      "notes": "along 0 = foot, along 1 = hip. TAT_AR_013 uses uvPos.x 0.0 (wraps around the limb) which is legitimate."
+    },
+    {
+      "id": "ZONE_RIGHT_LEG", "zoneId": 5, "band": "rightLeg", "rawVCore": [-11, -10],
+      "turnsPerUnitScale": { "male": 2.45547, "female": 2.32337 },
+      "meshPrimitives": "lowr drawable (male) / lowr + feet (female), band 5 vertices.",
+      "notes": "Mirror of the left leg."
+    }
+  ],
+
+  "genderDifferences": {
+    "components": {
+      "male": ["head_000_r", "uppr_015_r", "lowr_014_r"],
+      "female": ["head_000_r", "uppr_015_r", "lowr_015_r", "feet_000_r"]
+    },
+    "note": "The male lower drawable reaches the floor (no separate feet). The female lower stops at the ankle and ships a bare foot, so female.glb has a 5th primitive (feet). Aspect factors differ per gender (see turnsPerUnitScale); the head factor happens to be equal.",
+    "vertexCounts": { "male": 6801, "female": 6934 }
+  },
+
+  "referenceRenders": {
+    "note": "reference_male.png / reference_female.png were rendered by the desktop tool's OWN projection code (TattooProjection) drawing decal_calibration.png at the placement below. A correct web viewer, given the same glb + the same decal at the same placement, must land the mark in the same spot with the same orientation. The calibration art is asymmetric on purpose: cyan bar = art top edge, magenta bar = art left edge, red corner = art (0,0), green arrow = art up.",
+    "placement": {
+      "nameHash": "TAT_AR_008",
+      "zone": "ZONE_TORSO",
+      "uvPos": { "x": 0.6571, "y": 0.6122 },
+      "scale": { "x": 0.0722, "y": 0.0872 },
+      "rotationDegrees": 0.0
+    },
+    "camera": "front view (camera on +Z looking toward -Z), framed on the chest.",
+    "renderSize": [760, 1000]
+  },
+
+  "webViewerRecommendation": {
+    "preferred": "atlas / uv1-selection (reproduce the game exactly, same as the desktop). Build a decal-shell mesh from the base body: for each triangle whose vertices carry TEXCOORD_1, run the toDecal transform per vertex (with seamHandling and triangleSelection), and draw that shell with the decal texture using the toDecal UVs, lifted shellOffsetMetres along the normal, sampling clamped-to-transparent outside [0,1]. This is what produces the reference images.",
+    "notPreferred": "a projective/planar decal (THREE.DecalGeometry) is a plausible-looking approximation but does NOT match the game: the game's placement is a real unwrap that wraps around limbs and keeps the two arms separate, which a planar projector cannot reproduce. Use uv1, not a projector.",
+    "threejs": "TEXCOORD_1 arrives on the BufferGeometry as attribute 'uv1' (three.js r125+) / 'uv2' on older versions. Read it directly; do not rely on a material to sample it. Positions are in metres; the model is ~1.8 m tall."
+  }
+}

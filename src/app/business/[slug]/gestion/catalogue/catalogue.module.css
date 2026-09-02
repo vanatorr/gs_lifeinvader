@@ -1,0 +1,246 @@
+/*
+ * CATALOGUE, les classes que la maquette n'avait pas.
+ *
+ * ⚠⚠ REDESSINÉ EN shadcn/ui LE 2026-08-09, troisième passe. Verdict du propriétaire sur toutes les
+ * pages sauf la caisse: "lowky it doesnt look good. use shadcn and shadcn graphs and things. but
+ * still colorful." Les cartes de rayon, la grille d'articles, le vide d'un rayon et le sélecteur de
+ * dessin sont donc passés à `<Card>` / `<Badge>` / `<Empty>` / `<Popover>` + `<Command>`
+ * (CatalogueView.tsx, ProductTile.tsx, ArtPicker.tsx) et leur mise en forme vit désormais en
+ * Tailwind, à côté du balisage qui la porte, plutôt qu'ici. Ce fichier ne garde que ce que shadcn ne
+ * fournit pas: la MISE EN PAGE de la page (le plan de travail à deux colonnes, la grille de cartes
+ * de rayon, la colonne collante de la fiche) et les quelques classes que la caisse/le reste du
+ * portail mirent volontairement (`.chipPlain`, `.edstep`, `.legend`) - voir chaque bloc pour le
+ * pourquoi de ce qui reste local plutôt que Tailwind inline.
+ *
+ * LA MISE EN PAGE ELLE-MÊME (deux colonnes, grille de cartes 420px, colonne d'édition collante) est
+ * la correction du 2026-08-09 précédente et n'a PAS bougé: la coquille plafonne le contenu à 1360px
+ * (`business.css` `.page`), donc sur un écran de 1990px la colonne des articles fait 1018px, et
+ * 420px de plancher donne deux colonnes de cartes plutôt que les cinq d'une ancienne bande pleine
+ * largeur. Voir le bloc `.rayonGrid` ci-dessous pour la mesure complète. Ne pas réintroduire un
+ * plafond en pixels fixe sans revérifier qu'il tient aussi bien un catalogue clairsemé (un rayon,
+ * deux articles) qu'un catalogue dense (cinq rayons, huit articles chacun).
+ *
+ * ⚠ POURQUOI UN MODULE CSS ET PAS `business.css`. Le systeme de design du portail
+ * (`design/PORTAL_DESIGN.md` §10.1) dit d'ajouter une classe manquante a `business.css`. Ce n'est
+ * pas faisable ici: plusieurs autres pages du portail sont reecrites separement par d'autres mains,
+ * et cette feuille unique est le seul fichier que ces chantiers se partagent. Un module porte par la
+ * page qui l'utilise ne peut pas entrer en collision, et il disparait avec elle.
+ *
+ * ⚠ TOUTE BOITE EST FERMEE SUR SES QUATRE COTES (regle proprietaire du 2026-08-05). Les traits a un
+ * seul cote presents ici sont des SEPARATEURS a l'interieur d'une boite deja fermee: le filet entre
+ * deux etapes de la fiche article. Ils divisent deux choses, ils n'en entourent aucune.
+ *
+ * ⚠ AUCUNE COULEUR EN DUR. Les rayons passent par `toneVars()` (`--k`, `--kt`, `--onk`), les etats
+ * par `--ok` / `--warn` / `--bad`, l'accent par `--brand`/`--primary` (le pont shadcn de `theme.ts`).
+ */
+
+/* ---------------------------------------------------------------------------
+   LE PLAN DE TRAVAIL: le champ de rayons a gauche, la fiche article a droite.
+
+   ⚠ `align-items: stretch` ET `min-height` VONT ENSEMBLE, ils repondent aux deux
+   moities du meme reproche. `stretch` fait que les deux colonnes ont exactement
+   la meme hauteur de rangee, donc la fiche de droite ne pend plus a mi-page a
+   cote d'une colonne plus longue. `min-height` fait que cette rangee atteint le
+   bas de la fenetre meme quand le commerce n'a presque rien a vendre, donc la
+   page ne s'arrete plus aux deux tiers en laissant un vide dessous.
+
+   Le retrait de 250px est la somme mesuree de ce qui vit au-dessus et en dessous:
+   30 de marge haute + 42 d'en-tete + 80 de bandeau de chiffres + 48 de marge
+   basse, plus une cinquantaine pour la legende de bas de page. Ce n'est pas un
+   nombre rond: c'est ce qu'il faut pour que le bas de la composition tombe sur
+   le pli d'un 1080p, ce qui a ete verifie a la mesure.
+   --------------------------------------------------------------------------- */
+.work {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 328px;
+  gap: 14px;
+  align-items: stretch;
+  min-height: calc(100vh - 250px);
+}
+
+/* La colonne de gauche est une COLONNE, pas une boite: elle n'a aucune bordure,
+   donc il n'existe aucun bord bas a comparer avec celui de la fiche. Les seules
+   boites cote a cote de cette page sont les cartes de rayon entre elles, et
+   celles-la s'alignent par la grille. */
+.boardCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ⚠ 420px, MESURE. La colonne des articles fait 1018px au plafond de 1360px de
+   la coquille: 420 donne DEUX colonnes de cartes (2 x 503), donc quatre rayons
+   forment un carre 2x2 qui occupe la largeur ET la hauteur. Un plancher plus
+   petit en donnerait trois, et le quatrieme rayon resterait seul sur une seconde
+   rangee a moitie vide. En dessous de 1080px la composition passe a une colonne
+   et les cartes s'empilent, ce qui est la bonne lecture au telephone.
+   `align-content: start` et non `stretch`: on ne gonfle pas les cartes pour
+   remplir la colonne, on laisse la barre des archives se poser en bas.
+   Chaque carte de rayon (le contenu de cette grille) est un `<Card>` shadcn,
+   voir `CatalogueView.tsx` `rayonCard()` - cette grille EXTÉRIEURE ne change
+   pas selon ce que la carte contient. */
+.rayonGrid {
+  display: grid;
+  /* ⚠ `min(420px, 100%)` ET PAS `420px`. Mesure a 375px: la borne basse d'un
+     `minmax()` est un PLANCHER DUR, donc la piste refusait de descendre sous
+     420px et la page debordait de 69px lateralement (scrollWidth 444 pour une
+     fenetre de 375). `min(..., 100%)` laisse la piste tomber a la largeur du
+     conteneur quand celui-ci est plus etroit que le plancher, ce qui est la
+     forme correcte de "au moins 420, sauf s'il n'y a pas la place". */
+  grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr));
+  gap: 12px;
+  align-content: start;
+  flex: 1 1 auto;
+}
+
+/* ---------------------------------------------------------------------------
+   LA PUCE QUI N'APPARTIENT A AUCUN RAYON ("Tout", "Sans illustration"), barre
+   de filtres du haut de page. INCHANGÉE: elle mire volontairement la même
+   barre que la caisse (`.tools`/`.cats`/`.chip`, business.css), qui est hors
+   perimetre de ce chantier - les diverger casserait cette paire.
+   ⚠ MESURE, PAS PRECAUTION: pressee, une puce sans ton rendait du BLANC SUR
+   CREME, contraste 1.07. `.chip[aria-pressed="true"]` de `business.css` pose
+   `background: var(--k, var(--fg))` et `color: var(--onk, var(--on-k))`; une puce
+   sans `toneVars()` n'a donc ni `--k` ni `--onk` et les DEUX replis tombent du
+   mauvais cote a la fois, le fond sur la couleur du TEXTE et l'encre sur le blanc
+   destine a un aplat de marque. La maquette avait prevu le cas
+   (`.chip[data-cat="Tout"]`), mais par un attribut que l'application n'emet pas.
+   --------------------------------------------------------------------------- */
+.chipPlain[aria-pressed="true"] {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+.chipPlain[aria-pressed="true"] i {
+  background: var(--bg);
+}
+
+/* ---------------------------------------------------------------------------
+   LA FICHE ARTICLE, pleine hauteur. Boite = `<Card>` shadcn (ItemEditor.tsx /
+   CatalogueView.tsx), mais SA MÉCANIQUE DE SCROLL reste ici: c'est elle qui
+   fait que la fiche ne pend plus et ne defile jamais en entier.
+   ⚠ Elle ne PEND plus: la colonne est etiree a la hauteur de la rangee et le
+   panneau la remplit, donc son bas tombe exactement au bas de la composition.
+   Au-dela d'une fenetre, elle se borne et ce sont ses CHAMPS qui defilent, jamais
+   la fiche entiere: c'est la meme discipline que le ticket de la caisse, ou seule
+   la liste des lignes defile pour que le bouton Facturer reste atteignable.
+   --------------------------------------------------------------------------- */
+.editorCol {
+  min-width: 0;
+  position: sticky;
+  top: 20px;
+  align-self: stretch;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.edPanel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.edPanel :global(.ph) {
+  flex: none;
+}
+.edPanel :global(.edbody) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  align-content: start;
+}
+
+/* Les trois moments de la fiche.
+   ⚠ `.edstep + .edstep`, ET SURTOUT PAS `.edstep:first-of-type { border: 0 }`.
+   Mesure du banc d'essai: la version en `:first-of-type` posait bien un filet sur
+   la PREMIERE etape, parce que `:first-of-type` compte les TYPES D'ELEMENT, pas
+   les classes. L'apercu qui precede est un `<div>` lui aussi, donc le premier div
+   de la fiche n'etait pas `.edstep` et la regle d'annulation ne matchait rien: le
+   filet cerclait le haut de l'etape 1 comme s'il l'encadrait.
+   Ecrit dans l'autre sens, la regle DIT ce qu'elle est: un separateur ENTRE deux
+   etapes, donc il ne peut structurellement pas apparaitre avant la premiere. */
+.edstep {
+  display: grid;
+  gap: 9px;
+}
+.edstep + .edstep {
+  border-top: 1px solid var(--hair);
+  padding-top: 12px;
+}
+.edstepHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+/* Le numero de l'etape. Pose a cote du `.cap` global, jamais a sa place: c'est
+   un reperage, pas un titre. */
+.n {
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   Divers.
+   --------------------------------------------------------------------------- */
+
+/* `.btn` est en `width: 100%` par construction (c'est le bouton Facturer du
+   ticket). Un bouton d'en-tete de page ne doit pas traverser la ligne. */
+.btnAuto {
+  width: auto;
+}
+
+/* Les deux sorties d'un encart de confirmation. `.edmore` fournit la rangee, il
+   ne lui manquait qu'un ecart avec la phrase au-dessus. */
+.noteActs {
+  margin-top: 9px;
+}
+
+/* La legende de la part employe. Boite fermee, et la phrase dit d'ou sort
+   l'argent: c'est la seule facon d'empecher de la lire comme une remise, ce que
+   le proprietaire a deja eu a corriger une fois. */
+.legend {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surf);
+  padding: 10px 13px;
+  margin-top: 14px;
+  color: var(--muted-text);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.legend b {
+  color: var(--ok);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.legend strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+   PALIERS.
+   1080px: la fiche passe SOUS la carte, donc elle cesse d'etre collee et bornee,
+   et la composition n'a plus a atteindre le pli (la page entiere fait le travail).
+   Le palier des grilles de vignettes (730px) vit desormais avec elles, en
+   Tailwind (`TILE_GRID` dans CatalogueView.tsx, `max-[730px]:`).
+   --------------------------------------------------------------------------- */
+@media (max-width: 1080px) {
+  .work {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .editorCol {
+    position: static;
+    max-height: none;
+  }
+  .edPanel :global(.edbody) {
+    overflow: visible;
+  }
+}

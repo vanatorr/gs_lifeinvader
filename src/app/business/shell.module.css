@@ -1,0 +1,523 @@
+/*
+ * LA COQUILLE DU PORTAIL: le selecteur d'entreprise, le rail, la page introuvable.
+ *
+ * ⚠ POURQUOI UN MODULE CSS ET PAS `business.css`. La feuille globale est la maquette approuvee,
+ * levee telle quelle, et plusieurs pages y sont refaites en parallele. Tout ce qui suit est du
+ * CHROME (choisir un commerce, savoir ou l'on est, savoir ce qu'on a le droit d'ecrire), donc rien
+ * ici ne redefinit une regle de la maquette: les classes globales `.tag`, `.btn`, `.li`, `.ver`,
+ * `.brandbar`, `.app`, `.shell`, `.col`, `.main`, `.page` sont reutilisees telles quelles, et ce
+ * fichier n'ajoute que ce que la maquette ne dessinait pas.
+ *
+ * ⚠ LA COULEUR EST UNE DONNEE, JAMAIS UN CHOIX FAIT ICI. Chaque carte de commerce porte son propre
+ * `data-biz`, donc ses `--brand` / `--surf` / `--plate` / `--kN` arrivent de `paletteStyle()`. Les
+ * seules valeurs litterales de ce fichier sont dans le bloc `.portal` ci-dessous, et elles ont leur
+ * propre justification.
+ *
+ * ⚠ UNE BOITE EST FERMEE SUR SES QUATRE COTES (regle proprietaire du 2026-08-05). Les traits a un
+ * seul cote presents ici sont tous des SEPARATEURS: le filet du rail (rail contre contenu), celui
+ * sous la plaque d'une carte (visuel contre corps, comme `.tvis`), celui au-dessus de son pied
+ * (comme `.step`), et celui au-dessus du bloc d'identite en bas du rail (comme `.me`).
+ */
+
+/* ===========================================================================
+   1. LA PALETTE DES ECRANS QUI N'APPARTIENNENT A AUCUN COMMERCE
+   ===========================================================================
+   ⚠ CE N'EST PAS DE LA DECORATION, C'EST UN CORRECTIF. `business.css` ne declare `--bg`, `--surf`,
+   `--brand` et `--brand-text` NULLE PART sur `:root`: ces quatre variables n'existent que dans le
+   bloc `<style>` qu'une coquille de commerce injecte pour SON `data-biz`. Le selecteur d'entreprise
+   et la page introuvable portent `data-biz="none"`, donc aucune de ces regles ne les atteignait et
+   les declarations qui les lisent devenaient invalides: `.app` sans fond, `.panel` transparent, et
+   surtout un `.btn` sans fond ni bordure avec du texte blanc, c'est-a-dire un bouton de retour
+   litteralement invisible en theme clair. Une page qui ne propose plus rien, par une variable
+   absente.
+   Ces deux ecrans n'ont pas d'enseigne, donc pas de palette en base: la seule marque qui existe a ce
+   niveau est LifeInvader, et son rouge est deja dans la feuille globale (`.li`). On le reprend comme
+   `--brand`, avec sa variante texte pour le theme sombre, exactement la dualite de 1.1 du systeme.
+   Encre blanche sur ces deux rouges: 5.85 et 7.7, donc `--on-k` (blanc code en dur globalement)
+   reste le bon choix ici, contrairement a l'orange d'un garage (lacune L3). */
+.portal {
+  --bg: #16151a;
+  --surf: #201e25;
+  --plate: #eceae6;
+  --brand: #c8161f;
+  --brand-text: #f2848b;
+}
+@media (prefers-color-scheme: light) {
+  .portal {
+    --bg: #f2efe9;
+    --surf: #ffffff;
+    --brand: #a80a12;
+    --brand-text: #a80a12;
+  }
+}
+:global(:root[data-theme="light"]) .portal {
+  --bg: #f2efe9;
+  --surf: #ffffff;
+  --brand: #a80a12;
+  --brand-text: #a80a12;
+}
+:global(:root[data-theme="dark"]) .portal {
+  --bg: #16151a;
+  --surf: #201e25;
+  --brand: #c8161f;
+  --brand-text: #f2848b;
+}
+
+/* ===========================================================================
+   2. LE FRONTON DES ECRANS DE PORTAIL
+   =========================================================================== */
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.mtitle {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.mspacer {
+  flex: 1 1 12px;
+}
+
+/* Entree vers la console reseau, dans le bandeau du selecteur. Discrete a dessein: elle ne
+   s'affiche que pour deux personnes, et elle ne doit pas concurrencer les enseignes, qui sont ce
+   que la page sert. */
+.netlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  color: var(--muted-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.netlink:hover {
+  color: var(--fg);
+  background: var(--hover);
+}
+.lead {
+  margin: 0 0 14px;
+  color: var(--muted-text);
+}
+
+/* ===========================================================================
+   3. LE SELECTEUR: UNE DEVANTURE PAR COMMERCE
+   ===========================================================================
+   Meme silhouette que la vignette de la caisse (plaque, corps, rangee d'action), parce que c'est le
+   seul ecran que le proprietaire a valide et qu'un portail qui change de langage entre sa porte
+   d'entree et sa premiere page n'a l'air de rien.
+   Les pistes de 232 a 268px suivent la carte produit (215 a 250px) plutot que de s'etirer: quatre
+   commerces sur un ecran large doivent rester quatre objets, pas quatre bandeaux. `justify-content`
+   centre le bloc entier, donc deux cartes se posent au milieu au lieu de coller a gauche. */
+.cards {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 268px));
+  justify-content: center;
+}
+.card {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surf);
+  color: var(--fg);
+  overflow: hidden;
+  text-decoration: none;
+}
+.card:hover {
+  border-color: var(--brand-text);
+}
+/* La plaque de l'enseigne. `--plate` et `--k` viennent du commerce, donc deux commerces ne peuvent
+   pas se ressembler: la matiere de la plaque et la teinte du dessin sont deux canaux distincts. */
+.cmark {
+  height: 104px;
+  display: grid;
+  place-items: center;
+  background: var(--plate);
+  color: var(--k);
+  border-bottom: 1px solid var(--line);
+}
+.cmark svg {
+  display: block;
+  width: 46px;
+  height: 46px;
+}
+.cbody {
+  padding: 11px 13px 12px;
+  display: grid;
+  gap: 1px;
+  align-content: start;
+}
+.ckicker {
+  color: var(--brand-text);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.cname {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+/* Le personnage qui ouvre ce commerce. Sans lui, deux enseignes d'un meme compte ne se distinguent
+   que par leur nom et on ne sait pas laquelle appartient a quel personnage. */
+.cwho {
+  color: var(--muted-text);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.cwho b {
+  color: var(--fg);
+  font-weight: 600;
+}
+.cfoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 11px 8px 13px;
+  border-top: 1px solid var(--hair);
+}
+.copen {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--brand-text);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ===========================================================================
+   4. LES ETATS SANS CARTE: aucune entreprise, page introuvable
+   ===========================================================================
+   Une boite fermee, centree, bornee a une largeur de lecture. Ce n'est pas une panne, donc ni
+   `--bad` ni `--warn`: la marque du portail sur sa plaque, et une phrase. */
+.empty {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surf);
+  padding: 26px 22px 22px;
+  display: grid;
+  gap: 9px;
+  justify-items: center;
+  text-align: center;
+  max-width: 520px;
+  margin-inline: auto;
+}
+.emptymark {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  background: var(--plate);
+  color: var(--brand);
+  border-radius: var(--r);
+}
+.emptytitle {
+  font-size: 15px;
+  font-weight: 600;
+}
+.emptytext {
+  margin: 0;
+  color: var(--muted-text);
+  max-width: 46ch;
+}
+/* `.btn` est en `width: 100%` parce qu'il vit d'ordinaire dans la colonne du ticket. Ici il est
+   pose au milieu d'une carte centree, donc il reprend sa largeur naturelle. */
+.emptyacts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+.emptyacts :global(.btn) {
+  width: auto;
+}
+
+/* ===========================================================================
+   5. LE RAIL
+   ===========================================================================
+   Repris de `.rail` de la maquette (236px, colle, fond `--surf`, filet a droite) plutot qu'etendu:
+   les entrees ne sont plus des `.nav`, donc heriter des regles globales aurait demande d'en annuler
+   la moitie, a commencer par `.nav.off { opacity: 0.34 }` qui rend illisible le motif d'un blocage
+   qu'on est justement cense EXPLIQUER.
+   `overflow-y: auto`: un commerce a six entrees plus deux titres de groupe plus le bloc d'identite,
+   et sur un portable en paysage le bas du rail sortait de l'ecran sans moyen d'y revenir. */
+.rail {
+  width: 236px;
+  flex: none;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 10px;
+  background: var(--surf);
+  border-right: 1px solid var(--line);
+}
+
+/* Quelle enseigne. Meme plaque que la carte du selecteur, en petit, pour que "ou suis-je" et "chez
+   qui suis-je" soient la meme image d'un ecran a l'autre. */
+.biz {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 8px 9px;
+  margin-bottom: 15px;
+  color: inherit;
+  text-decoration: none;
+}
+a.biz:hover {
+  background: var(--hover);
+  border-color: var(--brand-text);
+}
+.bizmark {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r);
+  background: var(--plate);
+  color: var(--k);
+}
+.bizmark svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+.biztxt {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.bizname {
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.biztpl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--brand-text);
+}
+.bizswap {
+  flex: none;
+  color: var(--faint);
+}
+
+/* Deux groupes, et la separation est le fond du reglage: "ma caisse / mes ventes" est ce que je
+   fais de mes mains, "gestion" est ce que je decide pour les autres. Un employe sans droits de
+   gestion ne voit donc qu'un seul groupe, et le titre disparait avec lui. */
+.groups {
+  display: grid;
+  gap: 15px;
+}
+.group {
+  display: grid;
+  gap: 5px;
+}
+.gcap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  color: var(--faint);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.gcap i {
+  flex: 1;
+  height: 1px;
+  background: var(--hair);
+}
+.items {
+  display: grid;
+  gap: 2px;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  color: var(--muted-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.item:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+/* "VOUS ETES ICI", et c'est la seule chose que cet etat veut dire.
+   Un aplat plein `--brand` avec du texte par-dessus etait l'option de la maquette; il repose sur
+   `--on-k`, blanc code en dur, qui tombe a 3.75 sur l'orange d'un garage (lacune L3). La nappe
+   `--sel-mix` (le jeton que le portail utilise deja pour une ligne selectionnee) plus une bordure
+   `--brand-text` donnent la meme presence sans jamais poser d'encre sur un aplat non verifie, et
+   `--brand-text` est justement la variante faite pour contraster sur la surface (lacune L4). */
+.item[aria-current] {
+  background: color-mix(in srgb, var(--brand) var(--sel-mix), transparent);
+  border-color: var(--brand-text);
+  color: var(--fg);
+  font-weight: 700;
+}
+.item[aria-current] svg {
+  color: var(--brand-text);
+}
+
+/* ⚠ UNE ENTREE BLOQUEE RESTE VISIBLE ET EXPLIQUEE, jamais retiree: la retirer laisse croire que la
+   fonctionnalite n'existe pas alors qu'il manque seulement une prise de service, ou un droit a
+   demander a la direction. Elle garde donc sa boite (fermee, en filet `--hair`), son cadenas et son
+   motif en clair. Pas d'`opacity` globale: un motif a 34 pct d'opacite n'explique rien. */
+.blocked {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  padding: 8px 9px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  color: var(--faint);
+  cursor: not-allowed;
+}
+.blocked svg {
+  margin-top: 2px;
+}
+.blocked .ilabel {
+  color: var(--muted-text);
+  font-weight: 600;
+}
+/* Le motif est une PHRASE, pas une etiquette de deux mots: il reste donc a 11px en casse normale,
+   la ou la maquette prevoyait un `.cap` a 10px en capitales. Le systeme le dit lui-meme (2.2): sous
+   11px, on n'ecrit pas de la prose. "votre grade n'y a pas droit, demandez-le a la direction" en
+   petites capitales espacees dans une colonne de 216px est un mur, pas une explication. */
+.iwhy {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--faint);
+  line-height: 1.35;
+}
+
+/* Qui je suis, et surtout CE QUE JE PEUX FAIRE MAINTENANT. Le palier de presence commande tout
+   droit d'ecriture du portail, donc il ne peut pas etre une pastille de deux mots en bas de page:
+   il porte la consequence en clair, sinon chacun doit deviner pourquoi un bouton refuse. */
+.who {
+  margin-top: auto;
+  padding: 12px 4px 2px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 9px;
+}
+.whoname {
+  font-weight: 600;
+}
+.whorole {
+  color: var(--muted-text);
+  font-size: 11px;
+  margin-top: 1px;
+}
+.pres {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border: 1px solid currentColor;
+  border-radius: var(--r);
+  padding: 7px 9px;
+}
+.presdot {
+  width: 7px;
+  height: 7px;
+  margin-top: 4px;
+  background: currentColor;
+}
+.preslabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.preshint {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted-text);
+  line-height: 1.35;
+}
+.presOn {
+  color: var(--ok);
+}
+.presWarn {
+  color: var(--warn);
+}
+.presOff {
+  color: var(--faint);
+}
+
+/* ===========================================================================
+   6. TELEPHONE
+   ===========================================================================
+   ⚠ PAS DE RAIL QUI DEFILE HORIZONTALEMENT. La maquette passait `.rail` en `overflow-x: auto` sous
+   730px: avec six entrees sur un ecran de 375px, les dernieres n'etaient atteignables qu'en faisant
+   glisser une barre dont rien ne signale qu'elle glisse (lacune L15). Le rail devient donc un
+   bandeau qui s'empile, les deux groupes cote a cote, et TOUTES les entrees sont visibles d'un coup.
+   Le filet passe de droite a bas: il separe toujours le rail du contenu, il a juste change de cote. */
+@media (max-width: 730px) {
+  .rail {
+    width: 100%;
+    position: static;
+    height: auto;
+    overflow: visible;
+    padding: 10px 12px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .groups {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+  .who {
+    margin-top: 12px;
+  }
+  /* ⚠ LE CHASSIS DEBORDE HORIZONTALEMENT SUR TELEPHONE SANS CETTE LIGNE, et la cause n'est pas dans
+     la colonne. `.shell` porte `align-items: flex-start` (juste, en rangee: le rail ne doit pas
+     s'etirer) et passe en COLONNE sous 730px, ou ce meme mot veut dire "chaque enfant prend la
+     largeur de son contenu". `.col` n'a que `flex: 1`, qui ne regle que l'axe principal: sa largeur
+     devenait donc celle de son contenu le plus large. Mesure sur le banc d'essai, une page de
+     gestion a 375px: `.main` faisait 404px et la page entiere defilait de cote, alors que le
+     tableau qui la pousse est deja dans un `.tw { overflow-x: auto }` fait pour l'absorber.
+     `align-self` corrige le seul axe fautif, et seulement sous le palier ou la faute existe. */
+  .col {
+    align-self: stretch;
+  }
+}

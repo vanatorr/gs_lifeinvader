@@ -1,0 +1,638 @@
+/*
+ * LE POINTAGE: la mise en page.
+ *
+ * ⚠ POURQUOI UN MODULE CSS ICI, alors que `design/PORTAL_DESIGN.md` §10.1 dit d'ajouter toute classe
+ * manquante a `business.css`. Parce que plusieurs agents ecrivent dans `business.css` en meme temps
+ * que cette page: y poser cinquante regles garantissait un conflit de fusion sur le seul fichier que
+ * TOUT le portail partage. Le module respecte l'intention de la regle (aucun style en ligne inutile,
+ * aucune valeur de couleur en dur, tout compose avec les classes globales) sans en payer le prix.
+ *
+ * ⚠⚠ AUCUN NOM DE CLASSE DE CE FICHIER NE DOIT EXISTER DANS `business.css`, ET C'EST VERIFIABLE:
+ *   node -e "const f=require('fs'),c=s=>new Set([...s.replace(/\/\*[\s\S]*?\*\//g,'').matchAll(/\.([a-zA-Z][\w-]*)/g)].map(m=>m[1]));
+ *   const b=c(f.readFileSync('src/app/business/business.css','utf8')),m=c(f.readFileSync('src/app/business/[slug]/gestion/pointage/pointage.module.css','utf8'));
+ *   console.log([...m].filter(x=>b.has(x)))"
+ * Aujourd'hui les modules CSS hachent les noms, donc une collision ne casse rien EN PRODUCTION, et
+ * c'est precisement ce qui la rend dangereuse: elle dort jusqu'au jour ou quelqu'un replie ce fichier
+ * dans `business.css`. Deux collisions ont deja ete corrigees ainsi (`.main`, `.fld`).
+ *
+ * ⚠ AUCUNE COULEUR N'EST ECRITE EN DUR. Un ton d'employe se pose avec `toneVars()` et se lit avec
+ * `--k` (remplissage), `--kt` (le meme ton en TEXTE) et `--onk` (l'encre POSEE SUR l'aplat). Les
+ * seuls autres jetons employes sont les statuts globaux (`--ok`, `--warn`, `--bad`), le chrome
+ * (`--brand`, `--brand-text`, `--line`, `--hair`, `--hover`) et les textes (`--fg`, `--muted-text`,
+ * `--faint`). Une teinte derivee passe par `color-mix` sur un de ces jetons, jamais par un hex.
+ *
+ * ⚠ TOUTE BOITE EST FERMEE SUR SES QUATRE COTES. Les traits a un seul cote de ce fichier sont des
+ * SEPARATEURS a l'interieur d'une boite deja fermee: l'entete d'une carte, le filet entre deux
+ * couloirs du ruban, le filet au-dessus du journal, ceux entre chiffres.
+ *
+ * ⚠⚠ `.rad`/`.lineBorder`/`.fieldInput` EXISTENT PARCE QU'UNE CLASSE TAILWIND ARBITRAIRE A ECHOUE EN
+ * SILENCE. Verifie le 2026-08-09 en compilant PointageView.tsx avec `@tailwindcss/cli` 4.3.2:
+ * `rounded-[var(--r)]`, `border-(--line)` et `bg-(--k)` (valeur = une variable CSS) sont absents de
+ * la feuille generee dans CE fichier precis, sans la moindre erreur, alors qu'une valeur FIXE
+ * (`text-[10px]`, `min-w-[168px]`) compile normalement. D'ou la repartition suivante, qui est une
+ * REGLE de ce fichier et pas un hasard: tout ce dont la valeur est une variable de palette vit ici;
+ * tout ce qui est une valeur fixe reste en classe Tailwind, ou `cn`/tailwind-merge sait resoudre le
+ * conflit avec le style par defaut de la primitive shadcn (par exemple `text-[10px]` qui remplace le
+ * `text-xs` d'un `<Badge>`, ou `px-4` qui remplace le `px-6` d'un `<CardHeader>`).
+ *
+ * ⚠ UN SURCLASSEMENT D'UNE UTILITAIRE TAILWIND SE FAIT PAR UN SELECTEUR DESCENDANT, jamais par une
+ * classe de module posee a cote. Une classe de module et une utilitaire Tailwind ont la MEME
+ * specificite (0-1-0): laquelle gagne depend de l'ordre d'injection des feuilles, ce qui n'est pas un
+ * contrat. `.tableWrap td` (0-1-1) bat `p-2` a coup sur. C'est pour ca que la densite du tableau et
+ * la teinte de la ligne selectionnee sont ecrites en descendants.
+ *
+ * ─── CE QUE CE FICHIER DESSINE, ET POURQUOI (TROISIEME PASSE, 2026-08-09) ───────────────────────
+ * Verdict du proprietaire sur la version precedente, en production: "gestion/pointage needs to be
+ * completly redone using shadcn. look how bad it looks". Les deux passes d'avant avaient poli
+ * (keyframes, cascades, compte anime) une visualisation qui ne pouvait pas marcher sur la vraie
+ * donnee: une piste de temps CONTINUE de ~450px de haut, vide a plus de 98 pour cent, ou chaque
+ * service mesurait quelques pixels et portait une etiquette plus large que lui.
+ *
+ * Ce fichier ne dessine donc plus une toile, mais trois surfaces qui ne peuvent pas produire de vide:
+ *   `.chartCard`  un vrai graphique shadcn/Recharts (7 jours ou 24 tranches horaires: la largeur est
+ *                 toujours occupee, par construction).
+ *   `.ribbon`     le concept garde par le proprietaire, mais a 24px par employe au lieu de 450px, et
+ *                 avec des marques SANS TEXTE, a largeur plancher, decalees pour ne pas fusionner.
+ *   `.tableWrap`  le journal, une liste, qui tient 1 pointage comme 200 sans jamais laisser un trou.
+ * Les sept puces de jour deviennent `.scope`, une seule rangee qui absorbe aussi l'ancien selecteur
+ * Jour/Semaine, et ou un jour sans pointage s'attenue au lieu d'ecrire "0,0 h" en gras.
+ */
+
+/* ---------------------------------------------------------------- chrome repris de la palette */
+.rad { border-radius: var(--r); }
+.lineBorder { border-color: var(--line); }
+.fieldInput { border-radius: var(--r); border-color: var(--line); background: var(--surf); }
+.muted { color: var(--muted-text); font-size: 11px; }
+.flexGrow { flex: 1 1 10px; }
+
+/*
+ * UN ANCIEN EMPLOYE: la MEME ligne, la meme place, moins d'encre.
+ *
+ * Demande du proprietaire, verbatim: "this should still show data of someone no longer in the job.
+ * just grayed out or whatever". Donc en retrait, jamais masque, et jamais signale comme une anomalie.
+ *
+ * ⚠ `opacity` SUR LA LIGNE ENTIERE, ET PAS UNE COULEUR EN DUR. Chaque morceau de ces lignes tire sa
+ * couleur d'un jeton different (`--kt` pour le nom, `--muted-text` pour la meta, `--k` pour la jauge,
+ * `--ok` pour la pastille "en service"), et le portail rend en clair comme en sombre: un gris fixe
+ * serait faux dans un des deux themes et il faudrait le redire cinq fois. L'opacite les attenue tous
+ * d'un coup.
+ *
+ * ⚠ 0.62 ET PAS PLUS BAS: `--muted-text` vaut deja 74 pour cent en theme sombre, donc la ligne de
+ * meta descend ici a ~46 pour cent d'un texte plein. En dessous, elle passe sous le seuil de
+ * lisibilite alors qu'elle porte des HEURES EXACTES qu'on a choisi de garder affichees.
+ */
+/* Les deux formes ensemble: `--fade` gouverne l'image finale de `.cascade` (voir `@keyframes
+   ptCascade`), et `opacity` couvre le cas d'une ligne qui ne serait pas animee. */
+.former { --fade: 0.62; opacity: var(--fade); }
+.former:hover, .former:focus-within { --fade: 1; }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------- le bandeau de chiffres
+   Cinq cellules dans UNE carte, pas cinq cartes. Un chiffre agrege est une ligne de resume; cinq
+   boites en tete de page etaient une partie du "i feel lost". `flex-wrap` plutot qu'une grille a
+   nombre de colonnes fige: sur telephone les cellules se replient deux par deux toutes seules. */
+/* ⚠ LE `display` ET LA DIRECTION NE SONT PAS ECRITS ICI, MAIS EN CLASSES TAILWIND SUR LE `<Card>`
+   (`flex-row flex-wrap`). Raison mesuree le 2026-08-09 dans le banc d'essai: `<Card>` arrive avec
+   `flex flex-col`, une classe de module a la MEME specificite, et c'est `flex-col` qui gagnait: les
+   cinq cellules s'empilaient sur 740px de haut et, `flex-wrap` aidant, se remettaient en COLONNES.
+   Sur un conflit de propriete avec une utilitaire, il faut passer par `cn`/tailwind-merge, qui sait
+   remplacer `flex-col` par `flex-row`, jamais par une regle posee a cote. */
+.figStrip { margin-bottom: 14px; }
+.figCell {
+  flex: 1 1 148px;
+  min-width: 0;
+  padding: 10px 16px;
+  border-right: 1px solid var(--hair);
+}
+.figCell:last-child { border-right: 0; }
+.figK { color: var(--faint); }
+.figV {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.figLead { color: var(--brand-text); }
+.figDot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.figDotOff { background: var(--faint); }
+
+/* ---------------------------------------------------------------- la rangee haute
+   ⚠ DEUX ENFANTS, `align-items: stretch` (la valeur par defaut, ecrite parce qu'elle est le CONTRAT
+   et pas un hasard): le graphique et la colonne laterale se terminent a la meme hauteur quel que
+   soit le volume de donnees, ce qui rend impossible la CLASSE de defaut nommee par le proprietaire
+   ("uneven higfhts") plutot que d'en corriger un cas. Ce qui absorbe la hauteur en trop n'est jamais
+   du vide: a gauche le graphique s'etire, a droite la liste des heures. */
+.top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 14px;
+}
+
+.chartCard { display: flex; flex-direction: column; min-width: 0; }
+.chartHeadText { display: grid; gap: 1px; min-width: 0; }
+.chartTitle { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; }
+.chartDesc { color: var(--muted-text); font-size: 11px; }
+.chartBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  padding: 12px 12px 6px;
+}
+/* ⚠ `min-height` EST OBLIGATOIRE. Le `<ResponsiveContainer>` de Recharts mesure son parent: dans une
+   grille etiree, si cette carte est elle-meme la plus haute, sa hauteur est dictee par son contenu,
+   donc `height: 100%` se resout a `auto` et le graphique se dessine sur zero pixel. Le plancher est
+   ce qui garantit une surface a mesurer dans tous les cas. */
+.chartBox { flex: 1 1 auto; width: 100%; min-width: 0; height: 100%; min-height: 236px; }
+
+/* L'infobulle du graphique. Une valeur d'axe est en heures decimales (l'echelle en a besoin), mais
+   ce qu'on LIT reste "7 h 12" comme partout ailleurs sur la page. */
+.ttRow { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 14px; }
+.ttName { display: flex; align-items: center; gap: 6px; color: var(--muted-text); }
+.ttDot { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.ttVal { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--fg); font-weight: 500; }
+
+/* ---------------------------------------------------------------- la colonne laterale */
+.side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.liveOn { border-color: var(--ok); }
+.liveWrap {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  max-height: 232px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.liveDur {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ok);
+  white-space: nowrap;
+}
+
+/* ⚠ C'EST CETTE CARTE QUI ABSORBE LA HAUTEUR RESTANTE de la colonne, et sa liste defile a
+   l'interieur. Sans `min-height: 0` sur un enfant de flex, `overflow-y: auto` ne borne rien: la
+   liste pousse la carte, la colonne depasse le graphique, et les deux bas ne coincident plus. */
+.totals { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+.totWrap {
+  display: grid;
+  gap: 11px;
+  align-content: start;
+  padding: 12px 14px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.tot { display: grid; gap: 5px; min-width: 0; }
+.totTop { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+/* ⚠ FLEX ET NON UN SIMPLE `span` A ELLIPSE. L'etiquette "Ancien" est un enfant de cette ligne, et
+   `text-overflow: ellipsis` sur le parent aurait coupe l'etiquette AVANT le nom sur un nom long,
+   c'est-a-dire supprime la seule chose qui explique pourquoi la ligne est en retrait. Le nom garde
+   son ellipse (`.totName`), l'etiquette ne se comprime pas. */
+.totWho {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kt, var(--fg));
+}
+/* ⚠ `min-width: 0` EST CE QUI FAIT MARCHER L'ELLIPSE DANS UNE RANGEE FLEX: sans lui un enfant flex
+   refuse de descendre sous sa largeur de contenu, donc le nom pousse la carte et la deborde au lieu
+   de se couper. Mesure a 375px: 37px de debordement sur un nom de vingt-cinq caracteres accompagne
+   de son etiquette. L'etiquette, elle, ne se comprime jamais: la couper serait supprimer la seule
+   explication du retrait de la ligne. */
+.totName { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.totWho > :not(.totName) { flex: none; }
+.totBig { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* La jauge prend le ton de l'employe, jamais le bleu par defaut de shadcn. Selecteur d'attribut
+   plutot qu'une classe posee sur l'indicateur: `<Progress>` ne rend cet element que lui-meme. */
+.totTrack { height: 4px; background: var(--hair); border-radius: 2px; }
+.totTrack [data-slot="progress-indicator"] { background: var(--k, var(--brand)); border-radius: 2px; }
+.totMeta { font-size: 11px; color: var(--muted-text); font-variant-numeric: tabular-nums; }
+.totMeta b { color: var(--fg); font-weight: 600; }
+
+/* ---------------------------------------------------------------- le journal
+   ⚠⚠ UNE GRILLE A UNE COLONNE `minmax(0, 1fr)`, PAS UNE COLONNE FLEX, ET CE N'EST PAS UN GOUT.
+   Le tableau met `white-space: nowrap` sur chaque cellule, donc sa largeur MIN-CONTENT vaut la somme
+   des six colonnes, environ 740px. `overflow: auto` sur `.tableWrap` autorise le defilement mais
+   n'annule PAS cette contribution intrinseque, qui remonte de parent en parent. Or la coquille du
+   portail passe `.shell` en `flex-direction: column` sous 730px avec `align-items: flex-start`: la
+   colonne de contenu est alors dimensionnee en `fit-content`, donc sur le MIN-CONTENT de son
+   sous-arbre. Mesure dans le banc d'essai a 375px: la page entiere faisait 742px de large et debordait
+   de l'ecran. Une piste `minmax(0, 1fr)` borne ce minimum a zero et coupe la remontee a la source.
+   Le `display: grid` est pose en classe Tailwind sur le `<Card>`, pour la meme raison que `.figStrip`
+   ci-dessus (le `flex` de la primitive gagnerait sinon). */
+.journal { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.jHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted-text);
+}
+
+/* ---------------------------------------------------------------- le selecteur de portee
+   UNE seule rangee remplace deux controles (les onglets Jour/Semaine, plus sept cartes de jour de
+   meme poids dont cinq disaient "0,0 h"). La puce Semaine EST le mode semaine.
+
+   ⚠ UN JOUR SANS POINTAGE N'ECRIT PLUS DE NOMBRE. Il porte un tiret, s'attenue, et sa jauge reste
+   vide: la comparaison d'un jour a l'autre se lit alors sur les jauges, ou l'absence est une absence
+   au lieu d'un zero en gras qui pese autant qu'une vraie valeur. */
+/* ⚠ ELLES SE REPLIENT, ELLES NE DEFILENT PAS. Une bande a defilement horizontal cache des jours, et
+   un jour cache est un jour que personne ne consulte: a 768px les huit puces demandent 666px pour
+   456px disponibles, donc trois d'entre elles vivaient hors ecran derriere un geste que rien
+   n'annonce. Repliees, elles prennent deux rangees et restent toutes visibles. */
+.scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--hair);
+}
+.scopeChip {
+  flex: 1 1 96px;
+  min-width: 88px;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 7px 9px 8px;
+  text-align: left;
+  background: transparent;
+  color: var(--muted-text);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+.scopeWeek { flex: 0 0 auto; min-width: 104px; }
+.scopeChip:hover { background: var(--hover); color: var(--fg); }
+.scopeW {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.scopeW em { font-style: normal; letter-spacing: 0.04em; opacity: 0.6; }
+.scopeV {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+.scopeBar { display: block; height: 3px; border-radius: 2px; background: var(--hair); overflow: hidden; }
+.scopeBar i {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+  transition: width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.scopeIdle { opacity: 0.52; }
+.scopeIdle .scopeV { color: var(--faint); font-weight: 500; }
+.scopeFuture { opacity: 0.34; }
+.scopeToday { border-color: var(--brand-text); }
+.scopeChip[aria-pressed="true"] {
+  opacity: 1;
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-k);
+}
+.scopeChip[aria-pressed="true"] .scopeV { color: var(--on-k); }
+.scopeChip[aria-pressed="true"] .scopeBar { background: color-mix(in srgb, var(--on-k) 26%, transparent); }
+.scopeChip[aria-pressed="true"] .scopeBar i { background: var(--on-k); }
+
+/* ---------------------------------------------------------------- le ruban
+   LE CONCEPT GARDE PAR LE PROPRIETAIRE ("i like the concept of show punches are shown Repartition du
+   temps"), a une echelle qui tient sur la vraie donnee.
+
+   ⚠⚠ 24px PAR EMPLOYE, PAS UNE TOILE DE 450px, ET C'EST LA CORRECTION PRINCIPALE. Le rapport
+   vide/contenu d'une piste de temps est dicte par la donnee, pas par la mise en page: quelqu'un qui
+   a travaille 1 h 54 dans sa journee laisse forcement 92 pour cent de piste vide, et c'est vrai.
+   Ce qui etait faux, c'etait de consacrer un rectangle de 450px de haut a ce constat. A 24px la meme
+   information se lit comme une bande de temps, et l'aire de vide est divisee par vingt.
+
+   ⚠ AUCUNE MARQUE NE PORTE DE TEXTE. L'heure de prise s'ecrivait dans la barre; a quelques pixels de
+   large l'etiquette debordait sur la voisine et deux services proches se noyaient en une tache. Le
+   texte vit dans l'infobulle native et dans le journal, qui sont faits pour ca. */
+/* `overflow: hidden` est une ceinture, pas une mise en page: les marques sont posees en PIXELS a
+   partir d'une largeur mesuree, et une mesure momentanement fausse (juste apres un remontage, avant
+   que l'observateur n'ait repondu) ne doit jamais pouvoir pousser un aplat hors de la carte. Rien de
+   legitime n'est rogne: la pointe d'un service ouvert depasse d'au plus 7px et le rembourrage en
+   fait 14. */
+/*
+ * ⚠ LA LEGENDE DU GRAPHIQUE PASSE A LA LIGNE. `ChartLegendContent` est une rangee `flex` sans
+ * `flex-wrap`: a 375px, plusieurs employes dont un nom long sortent de la carte au lieu de
+ * s'enrouler (mesure du 2026-08-10). Une rangee qui s'enroule ne coute rien aux largeurs ou tout
+ * tenait deja, et le filtre des series vides retire de toute facon les entrees inutiles.
+ */
+.chartCard :global(.recharts-legend-wrapper > div) { flex-wrap: wrap; row-gap: 4px; }
+
+.ribbon { padding: 12px 14px 10px; overflow: hidden; }
+.ribRow {
+  display: grid;
+  grid-template-columns: 152px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 3px 0;
+}
+.ribbon > .ribRow + .ribRow { border-top: 1px solid var(--hair); }
+.ribRuler { padding-bottom: 2px; }
+.ribGutter { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.ribWho { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ribName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kt, var(--fg));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ribLive { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; }
+.ribSum { font-size: 11px; color: var(--muted-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.ribTrack { position: relative; height: 18px; }
+.ribTick {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.ribRule { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--hair); }
+
+/* Une marque: un aplat au ton de l'employe, largeur plancher appliquee en JS (voir `layoutMarks`),
+   posee en PIXELS et non en pourcentage, precisement parce que le plancher et le decalage
+   anti-collision se raisonnent en pixels. */
+.mark {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: var(--k, var(--brand));
+  animation: ptMark 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+  transform-origin: left center;
+  transition: filter 140ms ease, outline-color 140ms ease;
+}
+.mark:hover { filter: brightness(1.18); }
+.markSel { outline: 2px solid var(--fg); outline-offset: 1px; z-index: 2; }
+/* Un service ouvert continue: une pointe posee A DROITE de la marque, jamais un rognage de la marque
+   elle-meme. Rogner marchait sur une barre large et mangeait toute une marque de 5px. */
+.markOpen::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  translate: 2px -50%;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid var(--k, var(--brand));
+}
+
+.ribFoot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hair);
+  font-size: 11px;
+  color: var(--muted-text);
+}
+.ribWindow { font-family: var(--mono); color: var(--faint); white-space: nowrap; }
+
+/* ---------------------------------------------------------------- le tableau
+   ⚠ LES DESCENDANTS SONT VOULUS: ils battent a coup sur les utilitaires Tailwind du composant
+   `<Table>` shadcn, dont la specificite est identique a une classe de module (voir l'en-tete). */
+.tableWrap {
+  border-top: 1px solid var(--line);
+  min-width: 0;
+  max-height: 336px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.table { font-size: 12px; }
+.tableWrap th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 14px;
+  background: var(--surf);
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+.tableWrap td { padding: 7px 14px; white-space: nowrap; }
+.tableWrap tbody tr { border-bottom: 1px solid var(--hair); }
+.tableWrap tbody tr:last-child { border-bottom: 0; }
+.tableWrap tbody tr[data-state="selected"] {
+  background: color-mix(in srgb, var(--brand) var(--sel-mix), transparent);
+}
+.thGrow { width: 99%; }
+.thRight { text-align: right; }
+.jRow { cursor: pointer; }
+.jWho { font-weight: 600; }
+.jDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--k, var(--brand));
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.jDim { color: var(--muted-text); }
+.jOpen { color: var(--ok); }
+.jDur { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* ---------------------------------------------------------------- la fiche + la correction */
+.strip { border-top: 1px solid var(--line); }
+.detail { display: grid; gap: 11px; padding: 14px; }
+.dHead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.dIdent { display: grid; gap: 2px; min-width: 0; }
+.dWho { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.dWhen { font-size: 11px; color: var(--muted-text); }
+.dDur { text-align: right; }
+.dDurK { color: var(--faint); }
+.dBig {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+/* ⚠ UNE PHRASE, EN GRIS. La version precedente posait un paragraphe ambre de quatre lignes sous
+   chaque service, ce que le proprietaire a nomme en regardant la page. L'ambre est reserve au cas
+   ou l'action est reellement bloquee (`.dNote`, `.why`). */
+.dWhy { margin: 0; font-size: 11px; color: var(--muted-text); max-width: 96ch; }
+.dNote { margin: 0; font-size: 11px; color: var(--warn); max-width: 96ch; }
+
+.formRow { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.field { display: grid; gap: 4px; min-width: 0; flex: 0 1 208px; }
+.fieldK { color: var(--muted-text); font-size: 11px; }
+.preview { display: grid; gap: 4px; min-width: 0; }
+.previewV { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.previewBad { color: var(--bad); }
+.formActs { display: flex; gap: 8px; margin-left: auto; }
+.msgOk { font-size: 11px; color: var(--ok); }
+.msgErr { font-size: 11px; color: var(--bad); }
+.why { font-size: 11px; color: var(--warn); }
+
+.legendTags { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.tagDot { display: inline-block; width: 6px; height: 6px; background: currentColor; }
+
+/* ---------------------------------------------------------------- animation
+   ⚠⚠ AUCUNE BIBLIOTHEQUE D'ANIMATION, PAR CONSIGNE EXPLICITE DU PROPRIETAIRE. Quatre keyframes
+   ecrites a la main, plus les transitions ci-dessus. Chacune repond a un reproche precis
+   ("not animated"), et aucune ne dure plus de 340ms: la consigne est "Shopify-grade", donc precis et
+   immediat plutot que spectaculaire.
+     `.reveal`  le fondu d'ensemble a chaque changement de portee ou de vue de graphique. Il est
+                declenche par un REMONTAGE (`key=` cote TSX): un simple changement de proprietes ne
+                rejoue jamais une animation CSS de montage.
+     `.cascade` une rangee (couloir, ligne de journal, carte employe) qui arrive apres sa voisine
+                plutot que tout d'un bloc. Le decalage vient de `--i`, plafonne cote TSX pour qu'une
+                longue liste ne finisse pas par attendre une seconde.
+     `ptMark`   une marque du ruban qui se dessine depuis son bord gauche, dans le sens du temps.
+                Elle HERITE le `--i` de son couloir: le couloir et ses marques arrivent ensemble.
+     `ptPulse`  la respiration d'un point "en service". La seule animation en boucle de la page,
+                parce que c'est la seule chose qui est reellement en train de se produire. */
+@keyframes ptReveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.reveal { animation: ptReveal 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/*
+ * ⚠⚠ `--fade` DANS L'IMAGE FINALE, ET CE N'EST PAS UNE ELEGANCE: SANS LUI L'ATTENUATION D'UN ANCIEN
+ * EMPLOYE NE MARCHE PAS DU TOUT. Mesure du 2026-08-10: `.cascade` porte `animation-fill-mode: both`,
+ * donc apres 240ms l'element reste fige sur l'image `to`, et une valeur d'animation l'emporte sur
+ * une declaration normale dans la cascade CSS. Un `.former { opacity: 0.62 }` ecrit a cote etait
+ * donc ecrase EN SILENCE par le `opacity: 1` de cette image-ci, sur les deux surfaces a la fois
+ * (couloir du ruban et ligne "Heures par employe"), et l'opacite calculee valait 1.
+ *
+ * En faisant passer l'image finale par une variable, l'attenuation vit DANS le systeme d'animation
+ * au lieu de lutter contre lui, et le survol peut toujours la relever: changer `--fade` reevalue
+ * l'image finale. La valeur par defaut vaut 1, donc rien ne change pour toutes les autres lignes.
+ */
+@keyframes ptCascade {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: var(--fade, 1); transform: none; }
+}
+.cascade {
+  animation: ptCascade 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 32ms);
+}
+
+@keyframes ptMark {
+  from { transform: scaleX(0.05); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes ptPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.pulse { animation: ptPulse 1.6s ease-in-out infinite; }
+
+/* `business.css` coupe deja transitions et animations sous `prefers-reduced-motion`, mais il le fait
+   avec `*, *::after`: un `::before` y echappe, et surtout une regle globale peut etre retiree un jour
+   par quelqu'un qui ne lit pas ce fichier. Le repli local rend cette page correcte toute seule. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .cascade,
+  .mark,
+  .pulse {
+    animation: none !important;
+  }
+  .scopeBar i,
+  .scopeChip,
+  .mark {
+    transition: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------- adaptatif
+   Les paliers suivent la mise en page, pas des tailles d'appareil: on empile quand la colonne
+   laterale de 340px ne laisse plus au graphique de quoi respirer, on retrecit la gouttiere du ruban
+   quand un nom ne tient plus a cote de sa piste. */
+@media (max-width: 1120px) {
+  .top { grid-template-columns: minmax(0, 1fr); }
+  .totals { flex: 0 0 auto; }
+  .totWrap { max-height: none; }
+  .liveWrap { max-height: none; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .figCell { flex-basis: 50%; }
+  .ribRow { grid-template-columns: 112px minmax(0, 1fr); gap: 9px; }
+  .ribGutter { display: grid; gap: 0; }
+  .ribSum { font-size: 10px; }
+  .scopeChip { flex: 0 0 auto; min-width: 84px; }
+  .formActs { margin-left: 0; }
+  .field { flex: 1 1 160px; }
+}
+
+@media (max-width: 520px) {
+  /* Deux par rangee plutot qu'une: cinq chiffres empiles font 250px de haut avant la moindre donnee.
+     Cinq cellules donnent [1,2] [3,4] [5], donc `:last-child` designe exactement la derniere rangee
+     et `:nth-child(2n)` exactement la colonne de droite: les deux filets tombent juste sans qu'aucune
+     regle n'ait a deviner ou une rangee se termine. */
+  .figCell { flex-basis: 42%; border-bottom: 1px solid var(--hair); }
+  .figCell:nth-child(2n) { border-right: 0; }
+  .figCell:last-child { border-bottom: 0; border-right: 0; }
+  /* La puce se replie en une ligne: sur trois rangees de puces, la date et la jauge coutent plus de
+     hauteur qu'elles n'apportent, et le jour + le total suffisent a choisir. */
+  .scopeChip { flex: 1 1 74px; min-width: 70px; padding: 6px 8px; }
+  .scopeW em,
+  .scopeBar { display: none; }
+  .scopeV { font-size: 12px; }
+  .ribRow { grid-template-columns: 92px minmax(0, 1fr); }
+  .ribbon { padding: 10px 10px 8px; }
+  .tableWrap th,
+  .tableWrap td { padding-left: 10px; padding-right: 10px; }
+  .dDur { text-align: left; }
+}
+
+/* Au doigt, une marque de 5px de large reste petite: on lui donne de la hauteur, ce qui agrandit la
+   cible sans deformer la lecture du temps (l'axe est horizontal, la hauteur n'y signifie rien). */
+@media (pointer: coarse) {
+  .ribTrack { height: 24px; }
+  .ribRow { padding: 4px 0; }
+  .mark { top: 3px; bottom: 3px; }
+}

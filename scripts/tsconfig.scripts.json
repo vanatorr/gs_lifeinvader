@@ -1,0 +1,10 @@
+{
+  "//": "tsx-only config for verify scripts. Same paths as the root tsconfig, plus a stub for Next's `server-only` guard so a script can import the real server modules it verifies. Never used by next build.",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["../src/*"],
+      "server-only": ["./shims/server-only.ts"]
+    }
+  }
+}

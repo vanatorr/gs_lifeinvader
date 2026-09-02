@@ -1,0 +1,526 @@
+/*
+ * ANALYTIQUE: la feuille de style de CETTE page, et d'aucune autre.
+ *
+ * ⚠ POURQUOI UN MODULE PLUTOT QU'UN AJOUT A `business.css`. Meme raison que ventes.module.css et
+ * pointage.module.css: la feuille globale est la maquette approuvee, plusieurs pages sont refaites
+ * en parallele, et c'est le seul fichier que toutes partagent. Un module porte le meme contenu sans
+ * le risque de fusion, et il est cadenasse a la page.
+ *   → Les classes globales (`.head`, `.cap`, `.dim`, `.delta`, `.mono`, `.note`) restent celles de
+ *     `business.css` et ne sont REDEFINIES NULLE PART ici.
+ *   → Aucune couleur en dur. Tout passe par les variables de l'enseigne: `--brand`/`--brand-text`
+ *     pour l'accent, `--kN`/`--kNt` pour un ton de rayon (remplissage contre texte, les deux ne
+ *     sont pas interchangeables), `--line`/`--hair` pour les traits, `--ok`/`--bad` pour une
+ *     tendance. Les graphiques, eux, lisent `--chart-1..5`, que `theme.ts` fait pointer sur ces
+ *     memes `--kN`: un graphe est donc aux couleurs du commerce sans une seule valeur ecrite ici.
+ *   → Une boite se ferme sur ses quatre cotes (regle proprietaire du 2026-08-05). Les seuls traits
+ *     a un cote de ce fichier SEPARENT deux choses (l'entete d'une carte de son corps, une ligne de
+ *     la suivante); aucun ne pretend en entourer une.
+ *
+ * ⚠ CE QUI EST ECRIT ICI PLUTOT QU'EN TAILWIND. Deux categories, et rien d'autre:
+ *   1. LA GEOMETRIE que Tailwind ne dit pas en une classe: les gabarits de grille explicites, les
+ *      hauteurs de graphique, les colonnes qui se replient a un palier precis.
+ *   2. CE QUI LIT UNE VARIABLE DU PORTAIL. `--muted-text` (le texte secondaire de la maquette, a
+ *      74 %) n'a AUCUN equivalent Tailwind ici: le pont shadcn mappe `--muted-foreground` sur
+ *      `--faint` (57 %), qui est une autre valeur pour un autre usage. Ecrire `text-muted-foreground`
+ *      partout aurait delave la page d'un cran sans que personne ne sache pourquoi.
+ *
+ * ⚠ UNE REGLE DE CE FICHIER GAGNE TOUJOURS SUR L'UTILITAIRE TAILWIND D'UN COMPOSANT shadcn pour la
+ * meme propriete, quel que soit l'ordre des classes dans le JSX: les utilitaires vivent dans une
+ * `@layer`, pas ce fichier. C'est ce qui permet de monter un `<Card>` sous une classe d'ici et de
+ * lui retirer son `gap`/`padding` par defaut sans toucher card.tsx.
+ */
+
+/* ===========================================================================
+   1. LA COMPOSITION
+   ===========================================================================
+   Une seule colonne de blocs, chacun repondant a UNE question, dans l'ordre ou on se les pose:
+   combien -> comment ca evolue -> de quoi c'est fait -> quand -> par qui. Les rangees a deux
+   colonnes ci-dessous ne sont pas une decoration: deux cellules d'une meme rangee de grille ont la
+   MEME hauteur par construction, donc leurs bas ne peuvent pas deriver quand une donnee change
+   (c'est la faute n°1 relevee par le proprietaire sur les premieres pages refaites). */
+.wrap {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+/* Le changement de periode repasse par le serveur (chaque chiffre doit etre recalcule sur la bonne
+   fenetre, voir page.tsx). Pendant la transition la page s'attenue au lieu de sauter: on voit que
+   quelque chose se recalcule, et les anciens chiffres restent lisibles au lieu de disparaitre. */
+.busy {
+  opacity: 0.5;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+
+/* ===========================================================================
+   2. LA RANGEE DE CHIFFRES
+   ===========================================================================
+   `auto-fit` et non un nombre de colonnes fige: la tuile "part employe" disparait quand le module
+   est eteint, et trois tuiles doivent alors se repartir toute la largeur au lieu d'en laisser un
+   quart vide. Le plancher de 200px est ce qui fait passer la rangee a 2x2 sur tablette, puis a une
+   colonne sur telephone, sans un seul palier ecrit a la main. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+.kpi {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 13px 15px;
+}
+.kpiK {
+  color: var(--faint);
+}
+/* Le chiffre est le heros de sa tuile: c'est la TAILLE qui le dit, pas une couleur. Les quatre
+   tuiles se lisent donc comme quatre grandeurs comparables, et non comme une principale et trois
+   secondaires - ce qu'un accent sur la premiere aurait laisse croire a tort. */
+.kpiV {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.kpiFoot {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted-text);
+}
+/* La fleche de tendance suit la ligne de base du pourcentage au lieu de flotter au-dessus. */
+.deltaIcon {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 2px;
+}
+.kpiNote {
+  margin: -4px 0 0;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+/* ===========================================================================
+   3. LES CARTES ET LEURS ENTETES
+   =========================================================================== */
+/* `<Card>` pose son propre `gap` et son propre `padding` vertical (voir card.tsx). Une carte qui
+   contient un graphique n'en veut pas: l'entete et le corps se separent deja par un filet. */
+.card {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  align-content: start;
+}
+.chead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--line);
+}
+.ctitles {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+.ctitle {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.csub {
+  color: var(--muted-text);
+  font-size: 11px;
+}
+.cbody {
+  padding: 13px 15px 15px;
+  min-width: 0;
+}
+/* Le pied porte une LECTURE de ce que le graphe montre, jamais un chiffre de plus. C'est la seule
+   chose qui rend un graphique actionnable pour quelqu'un qui ne le decortique pas. */
+.cfoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 15px;
+  border-top: 1px solid var(--line);
+  color: var(--muted-text);
+  font-size: 11px;
+}
+.cfoot b {
+  color: var(--fg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===========================================================================
+   4. LES RANGEES A DEUX COLONNES
+   ===========================================================================
+   Les deux gabarits ne sont pas symetriques, et c'est voulu: un camembert est un objet CARRE qui
+   n'a rien a gagner a s'etirer, alors qu'un classement d'articles a besoin de toute la largeur pour
+   que ses barres se comparent. Meme raisonnement pour la semaine (7 points) contre les heures (24).
+   Le palier de repli est celui de `.split` dans business.css, pour que le portail garde un rythme. */
+.duoMix {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+.duoWhen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: 14px;
+  align-items: stretch;
+}
+@media (max-width: 1080px) {
+  .duoMix,
+  .duoWhen {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ===========================================================================
+   5. LES GRAPHIQUES
+   ===========================================================================
+   ⚠ UNE HAUTEUR EXPLICITE, TOUJOURS. `<ChartContainer>` retombe sinon sur `aspect-video`, donc sa
+   hauteur suit sa largeur: le graphe principal ferait 760px de haut sur un ecran large et 180px sur
+   telephone. Une hauteur fixe (et un cran plus court sur petit ecran) est la seule facon d'obtenir
+   la meme lecture partout. */
+.chartMain {
+  width: 100%;
+  height: 300px;
+  aspect-ratio: auto;
+}
+.chartSquare {
+  width: 100%;
+  height: 236px;
+  aspect-ratio: auto;
+}
+.chartWide {
+  width: 100%;
+  height: 236px;
+  aspect-ratio: auto;
+}
+@media (max-width: 730px) {
+  .chartMain {
+    height: 232px;
+  }
+  .chartSquare,
+  .chartWide {
+    height: 210px;
+  }
+}
+
+/* Le selecteur de vue du graphe principal reprend `.seg` de la maquette pour la silhouette, et
+   n'ajoute ici que sa place dans l'entete. */
+.cactions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ===========================================================================
+   6. LE BEIGNET, SON CENTRE ET SA LEGENDE
+   ===========================================================================
+   Le total vit au centre du trou, en HTML pose PAR-DESSUS le graphe (voir le commentaire dans
+   AnalytiqueView.tsx). Un camembert Recharts se centre tout seul dans son conteneur, donc un
+   simple `place-items: center` sur une couche en `inset: 0` tombe exactement dans le trou, sans
+   une seule coordonnee a calculer ni a resynchroniser si le rayon change.
+   ⚠ `pointer-events: none` EST OBLIGATOIRE: sans lui cette couche couvre le camembert et avale le
+   survol, donc l'infobulle ne s'ouvre plus jamais - une regression silencieuse, puisque le graphe
+   continue de s'afficher parfaitement. */
+.donut {
+  position: relative;
+}
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  pointer-events: none;
+  text-align: center;
+}
+.donutV {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.donutK {
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/*
+   Le camembert donne la FORME, la legende donne les CHIFFRES. Un camembert seul oblige a comparer
+   des angles, ce que personne ne sait faire au-dela de deux parts; la liste en dessous porte le
+   montant et la part exacte de chaque rayon, donc rien n'existe uniquement en couleur. */
+.legend {
+  display: grid;
+  gap: 0;
+  margin-top: 10px;
+}
+.lrow {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 6px 0;
+  border-top: 1px solid var(--hair);
+}
+.lrow:first-child {
+  border-top: 0;
+}
+.ldot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  align-self: center;
+  background: var(--k, var(--faint));
+}
+/* `--kt` et non `--k`: c'est du TEXTE. Une teinte choisie pour porter de l'encre en aplat est, par
+   construction, illisible en lettres sur le fond du panneau (voir `.tcat` dans business.css). */
+.lname {
+  flex: 1;
+  min-width: 0;
+  color: var(--kt, var(--fg));
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Largeur MINIMALE et alignement a droite: sans eux, "54 %" et "4 %" ne commencent pas au meme
+   endroit et la colonne de pourcentages ondule d'une ligne a l'autre, ce qui est exactement ce
+   qu'une legende chiffree doit rendre facile a comparer. */
+.lshare {
+  color: var(--muted-text);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  min-width: 34px;
+  text-align: right;
+}
+.lval {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ===========================================================================
+   7. LE CLASSEMENT DES ARTICLES
+   ===========================================================================
+   Des LIGNES, pas une grille de cartes: une grille laisse des trous des que le nombre d'articles ne
+   tombe pas juste sur le nombre de colonnes, et une ligne donne enfin a la barre de proportion la
+   largeur qui la fait lire comme un classement plutot que comme un decor. Meme choix, et meme
+   raison, que `.rrow` dans mes-ventes. */
+.plist {
+  display: grid;
+  gap: 0;
+}
+.prow {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 0;
+  border-top: 1px solid var(--hair);
+}
+.prow:first-child {
+  border-top: 0;
+}
+.prank {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+  text-align: right;
+}
+.prow:first-child .prank {
+  color: var(--brand-text);
+}
+.pmid {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.pnamerow {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+.pname {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pcat {
+  color: var(--kt, var(--muted-text));
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* La barre est la SEULE chose qui rend deux articles comparables d'un coup d'oeil; le ton du rayon
+   la peint, donc la couleur porte une information (de quel rayon vient ce chiffre) au lieu d'etre
+   un aplat de marque repete dix fois. */
+.pbar {
+  height: 4px;
+  background: var(--hair);
+  overflow: hidden;
+}
+.pbar i {
+  display: block;
+  height: 100%;
+  background: var(--k, var(--brand));
+  transition: width 0.22s ease;
+}
+.pend {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  text-align: right;
+}
+.pval {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Le rang dans l'AUTRE metrique. C'est l'information de cette page: un article premier en volume et
+   huitieme en chiffre ne se pilote pas comme un article premier des deux cotes, et cette divergence
+   est invisible sur un classement unique. */
+.palt {
+  color: var(--muted-text);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ===========================================================================
+   8. LE RENDEMENT PAR PERSONNE
+   =========================================================================== */
+.crow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(74px, auto));
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--hair);
+}
+.crow:first-child {
+  border-top: 0;
+}
+.chead2 {
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding-bottom: 7px;
+}
+.cname {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.cnm {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cnum {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cnum b {
+  font-weight: 700;
+}
+.crate {
+  color: var(--ok);
+  font-weight: 700;
+}
+.cnone {
+  color: var(--faint);
+  font-size: 11px;
+}
+@media (max-width: 730px) {
+  /* Sur telephone la colonne "tickets" saute: c'est la moins actionnable des trois, et trois
+     colonnes de chiffres a droite d'un nom ne tiennent pas dans 375px sans se chevaucher. */
+  .crow {
+    grid-template-columns: minmax(0, 1fr) repeat(2, minmax(64px, auto));
+  }
+  .hideNarrow {
+    display: none;
+  }
+  /* Le rayon passe SOUS le nom de l'article. Mesure a 375px: cote a cote, l'etiquette de rayon
+     mangeait assez de place pour tronquer "Bouteille domaine" en "Bouteille d..." - or le nom est
+     precisement ce qu'on lit pour reconnaitre la ligne, et le rayon est deja porte par la couleur
+     de la barre juste en dessous. */
+  .pnamerow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+  }
+}
+
+/* ===========================================================================
+   9. LE VIDE
+   ===========================================================================
+   Une periode sans vente n'est pas une erreur: c'est le premier ecran d'un commerce qui vient
+   d'ouvrir. Il doit dire ce qui manque ET quoi faire, jamais laisser un axe casse ou un `NaN`. */
+.hollow {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surf);
+  padding: 42px 20px;
+}
+/* `EmptyHeader` borne ses enfants a `max-w-sm` (384px), ce qui replie la phrase sur quatre lignes
+   courtes au milieu d'un panneau de 1150px et donne un ecran qui a l'air casse plutot que vide.
+   La regle vit ICI parce qu'elle ne concerne que ce vide-la; empty.tsx sert cinq autres pages. */
+.hollowHead {
+  max-width: 52ch;
+}
+.hollowP {
+  color: var(--muted-text);
+}
+
+/* Un fondu discret au montage, rejoue a chaque changement de periode (`key` sur le conteneur).
+   Jamais un glissement: la grille ne bouge d'aucun pixel entre deux periodes, seul le contenu
+   change, donc rien ne doit paraitre se deplacer. */
+.fadeIn {
+  animation: aFade 0.2s ease both;
+}
+@keyframes aFade {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fadeIn {
+    animation: none;
+  }
+  .pbar i {
+    transition: none;
+  }
+}

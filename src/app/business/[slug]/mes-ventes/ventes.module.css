@@ -1,0 +1,1194 @@
+/*
+ * MES VENTES: la feuille de style de CETTE page, et d'aucune autre.
+ *
+ * ⚠ POURQUOI UN MODULE CSS ALORS QUE `design/PORTAL_DESIGN.md` §10.1 dit d'ajouter les classes
+ * manquantes a `business.css`. Parce que cette page est refaite EN PARALLELE de quatre autres, par
+ * quatre agents distincts, et que `business.css` est le seul fichier que les cinq partagent: cinq
+ * ajouts simultanes au meme endroit ne se relisent plus et se marchent dessus a la premiere fusion.
+ * Un module porte le meme contenu sans ce risque, et il est CADENASSE a la page.
+ *   → Les classes globales (`.head`, `.seg`, `.cap`, `.note`, `.delta`, `.mono`, `.dim`) restent
+ *     celles de `business.css`, utilisees telles quelles. Ce fichier n'en redefinit AUCUNE.
+ *   → Aucune couleur en dur. `--kN` remplissage, `--kNt` texte, `--onkN` encre sur un aplat (poses
+ *     par `toneVars`), `--brand-text` pour l'accent en lettres, `--ok` pour ce qui est du au
+ *     vendeur, `--plate` pour la plaque claire d'un dessin produit.
+ *   → Une boite se ferme sur quatre cotes (regle proprietaire du 2026-08-05). Les seuls traits a un
+ *     cote ici SEPARENT: l'entete et le pied d'un panneau, le filet d'une journee, la limite
+ *     plaque/corps. Aucun ne pretend entourer quoi que ce soit.
+ *
+ * ⚠⚠ CE FICHIER A ETE RECOMPOSE LE 2026-08-09 APRES UN VERDICT DU PROPRIETAIRE SUR LES PAGES
+ * REFAITES: *"the concept is nice but the layout isnt good. i look at it i feel lost. or like there
+ * are as you can see uneven higfhts things like that"*, *"or like space isnt used correctly"*. La
+ * premiere version empilait des bandes pleine largeur. Quatre fautes, corrigees ICI par la
+ * STRUCTURE et pas par des retouches, sinon elles reviennent a la page suivante:
+ *
+ *   1. DEUX PANNEAUX COTE A COTE DONT LES BAS NE SE REJOIGNENT PAS. Corrige en rendant les deux
+ *      rangees de la composition explicites (`grid-template-rows`): dans une grille, deux cellules
+ *      d'une meme rangee ont LA MEME HAUTEUR par construction, il n'y a plus rien a accorder a la
+ *      main et rien qui puisse deriver quand une donnee change.
+ *   2. UN PANNEAU PLEINE LARGEUR POUR UNE SEULE PETITE CHOSE. Le cas CREUX est le cas NORMAL ici
+ *      (un employe, trois tickets), donc la page est composee POUR LUI: deux colonnes qui se
+ *      partagent la place, et quand une moitie n'a rien a montrer l'autre prend les deux colonnes
+ *      (`.span2`) au lieu de laisser une boite vide a cote.
+ *   3. LA PAGE S'ARRETAIT AUX DEUX TIERS DE LA FENETRE. Le plan de travail reclame desormais la
+ *      hauteur disponible (`min-height: calc(100vh - var(--mvchrome))`) et la rangee du bas absorbe
+ *      le reste, donc il n'y a plus de vide SOUS la page, seulement de l'air REPARTI dedans.
+ *   4. UNE PILE DE BANDES NE DONNE AUCUN ORDRE DE LECTURE. La composition en donne un: le chiffre
+ *      en haut a gauche (le plus gros), ce qu'on me doit en haut a droite, le classement en bas a
+ *      gauche, le journal en bas a droite. On sait ou poser l'oeil en premier.
+ *
+ * ⚠⚠ PASSE SHADCN DU 2026-08-09. Le proprietaire, apres avoir vu cette page: *"lowky it doesnt look
+ * good. use shadcn and shadcn graphs and things. but still colorful."* Le balisage de
+ * MesVentesView.tsx est passe de divs a la main a de vrais composants `@/components/ui/*` (Card,
+ * Item/ItemMedia/ItemContent/ItemActions, Badge, Empty, Chart). LA GEOMETRIE DE CE FICHIER N'A PAS
+ * BOUGE: chaque composant shadcn est monte SOUS le meme nom de classe de module qu'avant
+ * (`.hero`, `.pane`, `.box`, `.rrow`, `.trow`...), et une regle de CE fichier, qui n'est jamais
+ * dans une `@layer`, gagne TOUJOURS sur l'utilitaire Tailwind du composant pour la meme propriete,
+ * quel que soit l'ordre des classes dans le JSX. Trois consequences directes, notees a leur endroit:
+ *   - `.pane` gagne `gap:0; padding:0` explicites: `<Card>` pose par defaut un `gap` et un `py`
+ *     entre ses sections (voir card.tsx), que `.phead`/`.pbody`/`.pfoot` ne veulent pas puisqu'ils
+ *     se touchent deja par leurs propres bordures.
+ *   - `.week`/`.wd`/`.wb`/`.wl` disparaissent, remplaces par `.heroChart`/`.chart`: le rythme de la
+ *     semaine est desormais un vrai `<ChartContainer>` (Recharts), qui a besoin d'une hauteur
+ *     DEFINIE plutot que du flottement flex d'avant. (Passe par `.weekChart` le meme jour, un
+ *     graphe en barres, avant de devenir l'aire a deux series decrite plus bas.)
+ *   - `.rrank` perd sa taille de police en dur: `<Badge>` fixe deja sa propre typographie, seule la
+ *     position (le coin de la plaque) et la couleur (le ton du rayon, pas le bleu de marque) restent
+ *     du ressort de ce fichier.
+ */
+
+/* Rejoue à chaque bascule de période (`key={period}` dans MesVentesView.tsx force un vrai
+   remontage React). Un fondu discret, jamais un glissement: la grille en dessous ne bouge d'aucun
+   pixel entre les deux périodes, seul le contenu change, donc rien ne doit paraître se déplacer. */
+@keyframes mvFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.fadeIn {
+  animation: mvFadeIn 260ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fadeIn {
+    animation: none;
+  }
+}
+
+.wrap {
+  display: grid;
+  gap: var(--mvgap);
+
+  /* Le pas de la composition, une seule fois: les deux colonnes, les deux rangees et l'interieur
+     des panneaux s'en servent, donc la page garde le meme rythme partout. */
+  --mvgap: 12px;
+
+  /*
+   * CE QUE LA PAGE N'A PAS LE DROIT DE RECLAMER EN HAUTEUR, mesure et non choisi:
+   * `.main` ajoute 30px en haut et 48px en bas (business.css), le `.head` de la page fait 28px et
+   * porte 14px de marge basse. 30 + 28 + 14 + 48 = 120. Deux pixels de garde pour l'arrondi des
+   * bordures, donc 122. Trop grand et il reste un vide sous la page, trop petit et une barre de
+   * defilement verticale apparait alors que tout tient: c'est la valeur qu'on remesure si le
+   * `.head` change de hauteur, jamais une valeur qu'on devine.
+   */
+  --mvchrome: 122px;
+}
+
+/*
+ * LE PLAN DE TRAVAIL, a partir de 1180px de fenetre.
+ *
+ * Le seuil est calcule: le rail prend 236px et les marges de `.main` 48, donc a 1180 il reste 896px
+ * utiles, soit 490 + 394 une fois la gouttiere retiree. En dessous, deux colonnes donneraient un
+ * journal trop etroit pour ses lignes, donc on empile: une colonne n'est pas une rangee, et
+ * l'exigence d'alignement ne s'y applique pas.
+ *
+ * ⚠⚠ CORRIGE LE 2026-08-09: `minmax(184px, 0.8fr)` N'AVAIT PAS DE PLAFOND, seulement un plancher.
+ * Sur un ecran haut la rangee du chiffre pouvait depasser 380px pour afficher deux lignes de texte
+ * et deux petites boites de synthese, qui n'en demandent naturellement qu'environ 150. Le
+ * proprietaire, sur sa propre fenetre: *"needs to be half the high"*. `.box` centre son contenu
+ * (`align-content: center`) et `.week` s'etire (`align-items: stretch`), donc TOUT ce qui recevait
+ * cette hauteur en trop l'affichait comme du vide reparti autour d'un chiffre, jamais comme de
+ * l'information en plus.
+ *
+ * Le plancher de 184px reste (le cas creux ne descend jamais en dessous), mais le plafond est
+ * desormais une longueur reelle et non plus une part flexible. ⚠ Valeur RESSERREE une seconde fois
+ * le meme jour, `min(18vh, 200px)`, voir plus bas pour le pourquoi et la mesure exacte. La rangee
+ * du bas (classement + journal) passe alors a `1fr` SEUL: elle absorbe tout ce que la premiere
+ * rangee ne reclame plus.
+ * ⚠⚠ CE SURPLUS A LUI-MEME REVELE UN SECOND DEFAUT, corrige plus bas dans ce fichier
+ * (`.rlist`/`.jlist`): la rangee du bas heritait de bien plus d'air qu'avant, et `align-self:
+ * center` le repartissait alors en DEUX moities visibles au lieu d'une simple marge - "look they
+ * are in the middle". Ne pas re-citer `align-self: center` comme une reponse a ce surplus: c'est
+ * `start` depuis cette meme journee.
+ */
+/*
+ * ⚠⚠ `height` ET SURTOUT PAS `min-height`. Mesure a l'appui, cas plein (22 tickets) a 1920x1080:
+ * avec `min-height`, la hauteur du conteneur reste INDEFINIE, et une piste `fr` sans hauteur definie
+ * se dimensionne SUR SON CONTENU. Resultat: la rangee du bas poussait, la rangee du haut suivait au
+ * prorata de son facteur, et le bloc du chiffre atteignait 1304px de haut pour afficher un nombre et
+ * sept barres. Les panneaux ne defilaient jamais, la page faisait 3343px, et le "plan de travail"
+ * n'en etait plus un.
+ * Avec une hauteur DEFINIE, les `fr` se resolvent contre elle, les corps de panneaux sont bornes et
+ * defilent (`.pbody`), et la composition tient identique de trois tickets a soixante. C'est la meme
+ * regle que le ticket de la caisse, qui est borne et ne fait defiler que ses lignes.
+ */
+/*
+ * ⚠⚠ LA PREMIERE RANGEE TRAVERSE LES DEUX COLONNES DEPUIS LE 2026-08-09 (passe "profesionnal
+ * charting"), ET C'EST CE QUI PAIE LE GRAPHE. Avant, le bandeau du chiffre occupait la colonne de
+ * gauche et les deux boites de synthese celle de droite; le graphique se partageait donc la moitie
+ * gauche avec le total et recevait `clamp(150px, 22vh, 260px)` de large. Sept barres y tenaient. Une
+ * aire a deux series, avec sa legende et son axe, n'y tient pas.
+ * En donnant la rangee entiere a un seul bandeau (`.hero { grid-column: 1 / -1 }`, qui contient
+ * desormais le chiffre, le graphe ET les deux boites), la colonne du graphe passe d'environ 250px a
+ * ~390px a 1180, ~540px a 1440 et ~660px a 1920 - MESURE, et sans ajouter une seule rangee a la
+ * page, donc sans reprendre un pixel au classement ni au journal, qui gardent la rangee du bas
+ * telle quelle.
+ * La hauteur de la rangee monte de `min(18vh, 200px)` a `min(21vh, 234px)`: la legende (~22px) et
+ * l'axe (~14px) sont du contenu neuf, pas du vide. On reste tres en dessous des 380px qui avaient
+ * valu le *"needs to be half the high"* du proprietaire, et le plancher passe de 184 a 200 pour la
+ * meme raison.
+ */
+@media (min-width: 1180px) {
+  .wrap {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    grid-template-rows: minmax(208px, min(21vh, 236px)) minmax(0, 1fr);
+    height: calc(100vh - var(--mvchrome));
+  }
+  .hero {
+    grid-column: 1 / -1;
+  }
+
+  /*
+   * L'ETIREMENT DES LISTES, ET SON PLAFOND. Uniquement dans le plan de travail: c'est le seul
+   * endroit ou il y a une hauteur a remplir. En pile, la page grandit avec son contenu et un
+   * plafond ne ferait que comprimer des lignes (mesure a 375: il ecrasait une ligne de ticket et la
+   * faisait deborder de sa boite).
+   *
+   * `height: 100%` rend la hauteur DEFINIE, sans quoi `align-content: stretch` n'a aucune place
+   * libre a repartir et les lignes restent a la taille de leur texte.
+   * `max-height` borne l'etirement par ligne (116px pour un article, 150px pour un ticket): sans
+   * lui, DEUX articles dans un panneau de 568px donnaient deux pavés de 232px, ce qui est le
+   * "panneau qui contient une petite chose" du verdict, en plus grand.
+   *
+   * ⚠⚠ CORRIGE LE 2026-08-09, `align-self: center` -> `start`. La rangee du haut ayant ete
+   * plafonnee le meme jour (voir plus haut, "needs to be half the high"), la rangee du bas
+   * (classement + journal) a herite de TOUT l'exces qu'elle ne recevait pas avant: un panneau a
+   * trois lignes plafonnees a 364px pouvait se retrouver dans une cellule de 608px. `center`
+   * partageait alors ce surplus en DEUX moities de ~120px, une AU-DESSUS de la liste et une
+   * en-dessous - le proprietaire, cette fois: *"look they are in the middle"*. `start` met tout
+   * l'exces au SEUL endroit ou une liste sait deja le porter sans avoir l'air d'un oubli: en bas,
+   * sous la derniere ligne, exactement comme un panneau qui a de la place pour grandir.
+   */
+  .rlist {
+    height: 100%;
+    align-self: start;
+    max-height: calc(var(--n) * 116px + (var(--n) - 1) * 8px);
+  }
+
+  /*
+   * ⚠⚠ CORRIGE LE 2026-08-09: `.jlist` (et le `minmax(0, 1fr)` de `.jday`, voir sa propre regle
+   * plus bas dans ce fichier) NE DOIT S'ETIRER QUE QUAND `.jday` REÇOIT UNE HAUTEUR DEFINIE A
+   * DIVISER - donc UNIQUEMENT quand `.pbody` ne contient qu'UNE journee (`.one` juste plus bas:
+   * `align-content: stretch` etire alors cette unique rangee auto sur la hauteur definie de
+   * `.pbody`, exactement le raisonnement de `.rlist` ci-dessus). `.rlist` peut se permettre
+   * `height: 100%` SANS condition parce que son panneau ne contient jamais qu'un seul groupe.
+   *
+   * Le journal, lui, empile un `.jday` PAR JOURNEE: des que `d.days` en compte deux ou plus,
+   * `.pbody` reste en `align-content: start` et chaque `.jday` est une rangee auto parmi d'autres
+   * - il n'y a plus de hauteur a diviser, seulement du contenu a mesurer. La regle non conditionnee
+   * qui vivait ici avant (mesure a l'appui: 12 tickets dont 8 avec des lignes de produits qui
+   * passent a la ligne, 3 journees) donnait a la piste `1fr` de `.jday` AUCUNE hauteur a
+   * distribuer: `.jlist` s'y retrouvait avec une boite proche de 0px de haut alors que ses lignes
+   * en demandaient plus de 900, et `.jday` (mesure a 22px, la seule hauteur de son entete) ne
+   * contenait donc plus son propre contenu, qui debordait tel quel SUR LA JOURNEE SUIVANTE.
+   * Le journal a plusieurs journees garde maintenant `.jlist` a sa hauteur naturelle (aucune regle
+   * ici ne s'applique), et seul le cas a une journee recoit le meme traitement que `.rlist`:
+   */
+  .pbody.one .jlist {
+    height: 100%;
+    align-self: start;
+    max-height: calc(var(--n) * 150px + (var(--n) - 1) * 8px);
+  }
+  /* La piste `1fr` qui donne a `.jlist` une hauteur a diviser: voir `.jday` plus bas pour la
+     regle de base (sans elle) et le pourquoi du `min-height: 0` qui l'accompagne ici. */
+  .pbody.one .jday {
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+  }
+}
+
+/*
+ * EN PILE, LA PAGE RECLAME QUAND MEME LA FENETRE - ET CHAQUE PANNEAU DEFILE CHEZ LUI.
+ *
+ * Mesure a 760x900 sans aucune vente: la page s'arretait a 72% de la hauteur. `min-height` sur
+ * `.wrap` et le dernier panneau qui absorbe le mou (`flex: 1 1 auto`) restent la reponse a ca.
+ *
+ * ⚠⚠ CORRIGE LE 2026-08-09: en dessous de 1180px, `.pbody` n'avait NULLE PART de plafond ni de
+ * defilement propre - la regle qui les pose vivait UNIQUEMENT dans le bloc `@media (min-width:
+ * 1180px)` juste au-dessus. Un panneau grandissait donc avec son contenu SANS BORNE: mesure avec
+ * 20 tickets a 760px, le panneau du journal atteignait 1527px de haut, soit toute la page qui
+ * defile pour lire une liste. Le proprietaire, sur ce point precis: *"these need to be from top
+ * to bottom. and scrollable inside each one clean"* - les lignes etaient deja empilees de haut en
+ * bas (verifie, un `.rlist`/`.jlist` en grille ne peut pas faire autrement), c'est le DEFILEMENT
+ * PROPRE A CHAQUE PANNEAU qui manquait des que la fenetre passait sous 1180px.
+ *
+ * La regle `.pbody { overflow-y: auto; overscroll-behavior: contain }` est donc remontee HORS du
+ * bloc desktop: elle s'applique maintenant a toutes les largeurs. `overscroll-behavior: contain`
+ * est ce qui rend un defilement imbrique utilisable au pouce (le scroll du panneau ne "fuit" plus
+ * vers celui de la page une fois arrive en bout de liste), donc l'argument tactile qui justifiait
+ * l'ancien choix ne s'y oppose plus.
+ *
+ * Chaque panneau recoit un plafond explicite (`max-height`) puisqu'en pile il n'y a plus de
+ * rangee de grille pour le borner comme au-dessus de 1180px: sans plafond, `overflow-y: auto`
+ * n'a jamais rien a faire defiler. `min(56vh, 460px)` laisse un panneau creux respirer (le cas le
+ * plus frequent) tout en bornant un panneau dense a une hauteur qui n'oblige plus a faire defiler
+ * la fenetre entiere pour lire une liste.
+ */
+@media (max-width: 1179.98px) {
+  .wrap {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - var(--mvchrome));
+  }
+  .pane {
+    max-height: min(56vh, 460px);
+  }
+  .wrap > .pane:last-child {
+    flex: 1 1 auto;
+  }
+}
+
+/* Une moitie qui n'a pas de vis-a-vis prend les deux colonnes. En pile (une seule colonne) la regle
+   est inoffensive: `1 / -1` y designe la colonne unique. */
+.span2 {
+  grid-column: 1 / -1;
+}
+
+/* ---------------------------------------------------------------- 1. le chiffre
+   LE TOTAL EST LA CHOSE LA PLUS FORTE DE LA PAGE. La version rejetee ouvrait sur cinq tuiles de
+   meme poids, donc "combien j'ai fait" pesait autant que "combien d'heures".
+   ⚠ SANS bordure ni fond depuis le 2026-08-09 (passe minimalisme, demande du proprietaire): le
+   coffrage est retire cote JSX (`bg-transparent ring-0` sur le `<Card>`, voir MesVentesView.tsx),
+   donc cette regle ne pose plus que la GEOMETRIE (grille, espacement) - jamais l'apparence, pour ne
+   pas entretenir deux endroits qui pourraient un jour se contredire. */
+/*
+ * LE BANDEAU: [ le chiffre ] [ le rythme ] [ ta part / tes heures ].
+ *
+ * Trois blocs dans l'ordre du DOM, places par les seules COLONNES (pas de `grid-template-areas`):
+ * deux des trois peuvent legitimement ne pas exister - pas de graphe quand la periode et sa
+ * comparaison sont vides, pas de boites quand la direction a eteint les deux modules - et une aire
+ * nommee absente du gabarit place son occupant dans une piste implicite au lieu de disparaitre. Avec
+ * un simple gabarit de colonnes, "il y a deux blocs" se dit en changeant `grid-template-columns`, et
+ * le placement automatique fait le reste dans l'ordre du balisage.
+ *
+ * La colonne du graphe est la plus large (1.25fr contre 0.9fr): c'est elle qui a besoin de place
+ * pour rester lisible, alors que le bloc du chiffre est borne par la taille de son propre nombre.
+ * La colonne des boites est une LONGUEUR et non une part: deux petites boites de synthese ne
+ * gagnent rien a s'elargir sur un grand ecran, et tout ce qu'on ne leur donne pas va au graphe.
+ */
+.hero {
+  padding: 15px 4px 14px;
+  display: grid;
+  gap: 18px;
+  /* ⚠ 1.05fr POUR LE CHIFFRE, ET C'EST UNE MESURE, PAS UN GOUT. A 0.9fr sa colonne tombait a 280px
+     sur une fenetre de 1180, et la ligne de faits (cinq elements) y passait a QUATRE rangees, qui
+     debordaient du bandeau - lequel a une hauteur de rangee FIXE, donc le surplus se posait sur le
+     panneau du dessous. A 1.05fr elle vaut ~327px et la ligne tient en trois rangees, ce qui rentre.
+     Le graphe garde la part la plus large des deux malgre tout. */
+  grid-template-columns: minmax(280px, 1.05fr) minmax(240px, 1.1fr) minmax(154px, 182px);
+  /* stretch et non end: le graphe doit pouvoir prendre TOUTE la hauteur du bandeau. */
+  align-items: stretch;
+  min-width: 0;
+}
+.hero.noChart {
+  grid-template-columns: minmax(0, 1fr) minmax(154px, 210px);
+}
+.hero.noAside {
+  grid-template-columns: minmax(280px, 1.05fr) minmax(240px, 1.1fr);
+}
+/* Specificite (0,3,0) contre (0,2,0): ce cas gagne bien sur les deux precedents, quel que soit
+   l'ordre d'ecriture. */
+.hero.noChart.noAside {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/*
+ * EN PILE (sous 1180px, ou `.wrap` devient une colonne flex), le bandeau garde DEUX colonnes tant
+ * que la place le permet: le chiffre et le graphe cote a cote, les boites de synthese en dessous sur
+ * toute la largeur (`grid-column: 1 / -1`, voir `.aside`). Les empiler tous les trois des 1179px
+ * donnerait un bandeau de plus de 400px de haut sur une fenetre qui a encore 900px de large.
+ *
+ * ⚠⚠ LE PLANCHER EST 960px, ET IL EST MESURE, PAS CHOISI. La zone de contenu n'est PAS la fenetre:
+ * `.rail` prend 236px et `.main` 48px de marges, donc a 768px de fenetre il ne reste que 484px, soit
+ * deux colonnes de ~230. Le total du bandeau (`clamp(42px, 6.6vh, 78px)`) n'y tient pas: mesure a
+ * 768, "56 138 $" passait a la ligne et le dollar se retrouvait seul sur une seconde ligne de 42px
+ * de haut. A 960px de fenetre il reste 676px utiles, donc ~330 par colonne, ou le meme nombre tient
+ * d'un bloc. En dessous, le graphe passe SOUS le chiffre et prend toute la largeur, ce qui lui va
+ * mieux qu'une demi-colonne etroite.
+ */
+@media (min-width: 960px) and (max-width: 1179.98px) {
+  .hero,
+  .hero.noAside {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  }
+}
+@media (max-width: 1179.98px) {
+  .hero.noChart,
+  .hero.noChart.noAside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 959.98px) {
+  .hero,
+  .hero.noChart,
+  .hero.noAside,
+  .hero.noChart.noAside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* space-between plutot que centre: le titre tient le haut, la ligne de faits tient le bas, et l'air
+   en trop se met AU MILIEU, la ou il ressemble a une respiration et pas a un oubli. */
+.heroMain {
+  display: grid;
+  align-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hk {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  flex-wrap: wrap;
+  color: var(--faint);
+}
+.hrange {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--faint);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* --brand-text et non --brand: c'est du TEXTE pose sur --surf, et la teinte de remplissage y est
+   illisible (meme regle que .tcat / .fig .v.lead dans business.css).
+   La taille suit la HAUTEUR de la fenetre, pas sa largeur: c'est la hauteur qui manquait de contenu
+   sur l'ecran du proprietaire, et un chiffre de 46px sur 1080px de haut n'est pas un titre, c'est
+   une legende. 6.6vh donne ~71px sur 1080 et retombe au plancher sur un portable. */
+.hbig {
+  font-size: clamp(42px, 6.6vh, 78px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--brand-text);
+}
+@media (max-width: 420px) {
+  .hbig {
+    font-size: 38px;
+  }
+}
+
+.hsub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  /* Un peu de bonus 2026-08-09: sur une periode chargee (ticketCount, panier moyen,
+     aujourd'hui, delta ET meilleur jour a la fois), la ligne passe sur deux rangees.
+     `gap: 8px` pose la meme valeur en colonne ET en rangee, or 8px de rangee contre du
+     texte de 12px (~16px de hauteur de ligne) laisse a peine un demi-interligne entre les
+     deux: mesure en reproduction isolee (memes regles, meme police de repli), les deux
+     lignes se touchaient quasi. `row-gap` peut differer du `column-gap` a l'interieur du
+     raccourci `gap`: la valeur ci-dessous est la seule qui change, la colonne reste a 8px. */
+  row-gap: 14px;
+  color: var(--muted-text);
+  font-size: 12px;
+}
+.hsub b {
+  color: var(--fg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+/*
+ * UN FAIT ET SON SEPARATEUR SONT UN SEUL ELEMENT, et le point est un enfant EN LIGNE, pas un frere
+ * dans le flex de `.hsub`. Le fait ne peut donc plus se retrouver separe de son point quand la ligne
+ * passe a deux rangees.
+ *
+ * ⚠ SURTOUT PAS `display: inline-flex` ICI, essaye et mesure: le contenu d'un fait est un melange de
+ * texte nu et de `<b>`, et dans un conteneur flex chaque suite de texte devient un ELEMENT FLEX
+ * anonyme. Le `gap` s'inserait alors entre "5" et "tickets" (releve: "5␣␣tickets" avec 8px de trou),
+ * et les espaces de debut/fin de ces elements anonymes sont supprimes. En flux en ligne normal, la
+ * phrase reste une phrase; `white-space: nowrap` empeche seulement le fait de se casser en deux.
+ */
+.fact {
+  white-space: nowrap;
+}
+.dot {
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  background: var(--faint);
+  /* La moitie du couple: `.hsub` pose deja 8px A GAUCHE du fait via son `gap`. */
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/*
+ * LE RYTHME, EN AIRE (Recharts / shadcn). Remplace `.weekChart`, qui remplacait lui-meme le flex de
+ * <div> d'origine (`.week`/`.wd`/`.wb`/`.wl`).
+ *
+ * ⚠ `<ChartContainer>` a besoin d'une hauteur DEFINIE pour son `ResponsiveContainer` interne, jamais
+ * d'un pourcentage contre un ancetre indefini. Deux regimes, donc, et c'est la seule raison des deux
+ * regles ci-dessous:
+ *   - dans le plan de travail (>= 1180px) le bandeau tient une hauteur de rangee definie, donc
+ *     l'element de grille etire en herite et `height: 100%` se resout;
+ *   - en pile, `.wrap` est une colonne flex sans hauteur imposee: rien a heriter, donc une longueur
+ *     EXPLICITE, sinon le conteneur mesure 0 et le graphe ne se dessine pas du tout (echec muet, le
+ *     plus penible a diagnostiquer avec Recharts).
+ *
+ * ⚠ `height` sur `.chart` ANNULE l'`aspect-video` que <ChartContainer> pose lui-meme via `cn()`:
+ * `aspect-ratio` ne s'applique qu'a une boite dont une dimension est `auto`. Meme mecanique que le
+ * reste du fichier: une regle d'ici n'est dans aucune `@layer`, donc elle gagne sur l'utilitaire.
+ */
+.heroChart {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
+/*
+ * ⚠⚠ `min-width: 0` EST OBLIGATOIRE ET `width: 100%` NE SUFFIT PAS. Mesure a 768px: `.heroChart`
+ * faisait bien 240px, et le `<ChartContainer>` a l'interieur 299px, qui debordaient de la fenetre.
+ * La cause n'est pas Recharts: `<ChartContainer>` est un element de grille (et un conteneur flex),
+ * donc son `min-width` vaut `auto`, c'est-a-dire SA LARGEUR MIN-CONTENT - ici celle de la legende en
+ * capitales espacees, ~300px. Un `width: 100%` ne descend jamais sous ce plancher. `min-width: 0`
+ * retire le plancher, et le `flex-wrap` de `.legend` fait le reste en ramenant la min-content a la
+ * largeur d'un seul intitule.
+ */
+.chart {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+@media (max-width: 1179.98px) {
+  .heroChart {
+    height: 168px;
+  }
+}
+
+/*
+ * LA LEGENDE DU RYTHME EST SON ENTETE. `ChartLegendContent` centre par defaut et pose `pb-3`, ce qui
+ * conviendrait a une legende de bas de graphe; posee en haut et alignee a gauche, avec la casse des
+ * intitules du portail (`.cap` de business.css), elle se lit comme le titre du bloc - et economise
+ * la rangee qu'un vrai titre aurait coutee dans un bandeau ou chaque pixel de hauteur est compte.
+ */
+.legend {
+  justify-content: flex-start;
+  /* `wrap` mesure a l'appui: a 768px de fenetre la colonne du graphe tombe a ~240px et les deux
+     intitules en capitales espacees mesuraient ~250px, donc la legende debordait horizontalement de
+     son propre conteneur (relevé `scrollWidth > clientWidth` sur `.heroChart`). Recharts remesure la
+     hauteur rendue de sa legende et rend la place au trace, donc une seconde rangee ne rogne rien. */
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding-bottom: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-text);
+}
+
+/* L'INFOBULLE. `ChartTooltipContent` rend la coquille (fond, bordure, ombre); ces trois regles ne
+   dessinent que l'INTERIEUR des lignes qu'on lui passe en `formatter`/`labelFormatter`, la ou son
+   rendu par defaut afficherait des centimes bruts via `toLocaleString()`. */
+.tipHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.tipHead em {
+  font-style: normal;
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--muted-text);
+}
+.tipRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.tipRow i {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 2px;
+}
+.tipRow b {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tipName {
+  flex: 1;
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- 2. ce qu'on me doit
+   Les boites de synthese se partagent la hauteur de la rangee a parts egales, donc leur bas tombe
+   exactement sur celui du chiffre. C'est la faute n.1 du verdict, reglee par la grille. */
+.aside {
+  display: grid;
+  gap: var(--mvgap);
+  grid-auto-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+/* En pile, les boites passent SOUS le duo chiffre + graphe et se mettent cote a cote: une colonne de
+   deux boites hautes de 90px a cote d'un graphe de 168px laisserait un trou sous elles, alors qu'une
+   rangee de deux boites larges ferme proprement le bandeau. */
+@media (max-width: 1179.98px) {
+  .aside {
+    grid-column: 1 / -1;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
+  }
+}
+/* Sur telephone deux boites cote a cote ne laissent plus la place a la phrase qui explique la part
+   employe, et cette phrase EST ce qui empeche de la confondre avec une remise. */
+@media (max-width: 619.98px) {
+  .aside {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+  }
+}
+/*
+ * ⚠⚠ CETTE BOITE EST MESUREE CONTRE SON CONTENU, PAS DESSINEE A VUE, et c'est ce qui a manque
+ * jusqu'au 2026-08-09: la rangee du haut a une hauteur FIXE, les deux boites se la partagent, et
+ * `align-content: center` fait qu'un contenu trop haut ne pousse rien, il se fait couper AUX DEUX
+ * BOUTS - le haut de l'intitule ET la fin de la phrase. Constate en navigateur: "Elle ne sort pas de
+ * la facture du" s'arretait la, et l'intitule HEURES etait rogne par le haut.
+ *
+ * Le budget, a 1180px de fenetre (le cas le plus serre) et sur une rangee de 208px:
+ *   208 - 29 (marges interieures du bandeau) = 179 pour la colonne, moins 12 de gouttiere = 167,
+ *   donc 83 par boite, moins 20 de marge interne = 63 de contenu utile.
+ * Ce qu'il faut y loger: intitule 12 + valeur ~23 + 3 + DEUX lignes de phrase a 13 = 63.
+ * Chaque valeur ci-dessous (interlignes compris) sort de ce calcul, et la vue borne la phrase a deux
+ * lignes en consequence (voir son commentaire). Toucher l'une sans l'autre remet la coupe.
+ */
+.box {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surf);
+  padding: 10px 12px;
+  display: grid;
+  /* centre: une boite etiree par la grille doit poser son contenu au milieu, sinon la valeur colle
+     en haut et la boite parait vide par le bas. */
+  align-content: center;
+  gap: 2px;
+  min-height: 0;
+}
+.bk {
+  color: var(--faint);
+  line-height: 1.2;
+}
+/* ⚠ PLAFOND RESSERRE (34px -> 26px) LE 2026-08-09, voir le budget chiffre sur `.box` ci-dessus.
+   Un chiffre de 34px ne laissait pas la place a la phrase, et c'est la phrase qui porte la
+   distinction "ce n'est pas une remise" - la seule chose de cette boite qu'on ne peut pas deviner. */
+.bv {
+  font-size: clamp(19px, 2.4vh, 26px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+.bm {
+  font-size: 10px;
+  color: var(--muted-text);
+  line-height: 1.3;
+  margin-top: 3px;
+}
+.bm b {
+  color: var(--fg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * ⚠ LA PART EMPLOYE N'EST PAS UN CHIFFRE D'AFFAIRES ET NE SE PEINT PAS COMME LUI.
+ *
+ * Elle est versee par L'EMPLOYEUR en fin de semaine et ne sort JAMAIS de la facture du client: c'est
+ * l'inversion que le proprietaire a deja corrigee une fois. D'ou trois choix, pas un seul: une boite
+ * a part (jamais une ligne du bloc de tete), la couleur `--ok` (ce qu'on encaisse) au lieu de
+ * `--brand-text` (ce que le commerce a fait), et une phrase qui le dit sous le montant. Meme
+ * raisonnement que `.share` sur la caisse, qui vit SOUS la perforation du ticket.
+ */
+.owed {
+  border-color: color-mix(in srgb, var(--ok) 42%, var(--line));
+}
+.owed .bv {
+  color: var(--ok);
+}
+
+/* ---------------------------------------------------------------- les deux panneaux du bas
+   Meme anatomie pour les deux, et ce n'est pas cosmetique: un entete, un corps qui defile, un pied.
+   Deux panneaux qui se font face doivent avoir la MEME charpente, sinon leurs contenus flottent a
+   des hauteurs differentes meme quand leurs boites, elles, sont alignees. Le pied donne en plus un
+   bas de panneau INTENTIONNEL: l'air en trop du cas creux se loge entre le contenu et le pied, au
+   lieu de s'accumuler contre une bordure. */
+.pane {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surf);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  min-height: 0;
+  /* Neutralise le `gap`/`py` que <Card> (shadcn) pose par defaut sur son propre element (voir
+     card.tsx: `gap-(--card-spacing) ... py-(--card-spacing)`), depuis la passe shadcn du
+     2026-08-09. `.phead`/`.pbody`/`.pfoot` portent deja leur propre padding et se separent par
+     leur bordure (`border-bottom`/`border-top`), pas par un espace entre cases de grille: un gap
+     ou un padding herite de Card rouvrirait la boite fermee que ces trois lignes forment. */
+  gap: 0;
+  padding: 0;
+}
+/*
+ * LE PANNEAU DU CLASSEMENT PORTE UNE RANGEE DE PLUS: la repartition par rayon, entre l'entete et la
+ * liste. Une variante explicite plutot qu'un `grid-template-rows: auto auto minmax(0,1fr) auto` pose
+ * sur `.pane` tout court: le journal, lui, n'a que trois rangees, et une piste declaree mais vide
+ * n'est pas gratuite dans une grille dont la deuxieme piste est un `1fr` qui doit absorber le reste.
+ * La classe n'est posee QUE quand la bande existe vraiment (deux rayons ou plus, voir la vue).
+ */
+.paneMix {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+.phead,
+.pfoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 13px;
+  color: var(--muted-text);
+}
+.phead {
+  border-bottom: 1px solid var(--line);
+}
+.pfoot {
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+}
+.pfoot b {
+  color: var(--fg);
+  font-weight: 700;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.pbody {
+  padding: 12px;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: var(--mvgap);
+  /*
+   * ⚠⚠ CORRIGE LE 2026-08-09: cette regle vivait UNIQUEMENT dans un `@media (min-width: 1180px)`,
+   * au motif qu'"un cadre qui defile a l'interieur d'une page qui defile aussi est impossible a
+   * manoeuvrer au pouce". `overscroll-behavior: contain` (juste en dessous) est PRECISEMENT ce qui
+   * rend ce geste utilisable: une fois le panneau arrive en bout de liste, le defilement ne fuit
+   * plus vers la page. L'argument qui justifiait de tout reserver au grand ecran ne tenait donc
+   * plus, et le proprietaire a demande l'inverse explicitement: *"scrollable inside each one
+   * clean"*. La regle s'applique maintenant a toutes les largeurs; c'est `.pane` (voir le bloc
+   * `@media (max-width: 1179.98px)` plus haut) qui lui donne desormais un plafond en pile, la ou
+   * la grille du plan de travail le faisait deja au-dessus de 1180px.
+   */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/*
+ * UN SEUL GROUPE DANS LE CORPS: il prend toute la hauteur, et ses lignes se la partagent.
+ *
+ * C'est LA regle du cas creux, et elle est posee par la vue (qui sait combien de groupes il y a)
+ * plutot que par un `:only-child`, parce qu'elle doit rester fausse des qu'il y en a deux: etirer
+ * a parts egales une journee a un ticket et une journee a six donnerait a la premiere une place
+ * qu'elle n'a pas gagnee. Avec un seul groupe la question ne se pose pas, et trois lignes bien
+ * reparties valent mieux que trois lignes serrees en haut d'un panneau vide.
+ */
+.one {
+  align-content: stretch;
+}
+
+/* L'etat vide: centre dans le panneau, jamais colle en haut a gauche. Une phrase seule au milieu
+   d'une grande surface est un etat vide; la meme phrase dans un coin est une page cassee. */
+.hollow {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  gap: 6px;
+  padding: 28px 20px;
+  min-height: 0;
+}
+/* ⚠ `.hollowP`, PLUS UN SELECTEUR DE BALISE `.hollow p`, depuis l'adoption de <Empty> (shadcn) le
+   2026-08-09: `EmptyDescription` rend un `<div>`, pas un `<p>` (voir empty.tsx), donc l'ancien
+   selecteur de balise ne touchait plus rien, en silence, exactement le piege que le commentaire
+   `:global(.cap)` juste en dessous decrit deja pour `.cap`. Cible la classe, posee explicitement
+   sur le composant. */
+.hollowP {
+  margin: 0;
+  color: var(--muted-text);
+  max-width: 42ch;
+}
+/* ⚠ `:global` EST OBLIGATOIRE ICI. `.cap` est une classe de `business.css`, et un module CSS RENOMME
+   tout ce qu'il voit: ecrite `.hollow .cap`, la regle compilerait en `.hollow .ventes_cap__xxxx` et
+   ne toucherait jamais l'element. Aucune erreur, aucun avertissement, juste une declaration qui
+   n'atteint rien. C'est le seul endroit du fichier ou une classe globale est CIBLEE plutot que
+   simplement posee a cote dans le balisage. */
+.hollow :global(.cap) {
+  color: var(--faint);
+}
+
+/* ---------------------------------------------------------------- 3a. la repartition par rayon
+ * DE QUOI EST FAIT LE CHIFFRE, en une bande. Ce n'est pas le classement en plus petit: le classement
+ * dit quel ARTICLE part le plus, la bande dit de quel RAYON vit la personne. Elle se pose au-dessus
+ * de la liste parce qu'elle se lit dans ce sens: le resume d'abord, le detail ensuite.
+ *
+ * ⚠ C'est ici que "colorful and color coded to that business" se paie vraiment: chaque segment prend
+ * `--chart-N`, c'est-a-dire le ton du rayon DE L'ENSEIGNE (pont shadcn de lib/business/theme.ts).
+ * Aucune couleur n'est ecrite dans ce fichier ni dans la vue, et le meme graphe rend bordeaux chez le
+ * vigneron, orange chez Benny's et vert chez la superette sans une ligne de plus.
+ *
+ * ⚠ SEPARATEUR EN BAS SEULEMENT, comme `.phead`: la bande DIVISE l'entete de la liste, elle
+ * n'entoure rien (regle proprietaire du 2026-08-05, voir l'entete du fichier).
+ */
+.mix {
+  padding: 9px 13px 10px;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 7px;
+}
+/* Hauteur EXPLICITE et courte: `<ChartContainer>` exige une hauteur definie (voir `.chart`), et une
+   repartition n'a rien a gagner a etre haute - c'est une longueur qu'on lit, pas une amplitude. */
+.mixBar {
+  width: 100%;
+  height: 26px;
+}
+.mixKeys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.mixKey {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--muted-text);
+}
+/* `--k` est pose en ligne par la vue avec le MEME jeton que le segment correspondant: la pastille de
+   la legende ne peut donc pas se desynchroniser de la couleur qu'elle legende. */
+.mixKey i {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  background: var(--k);
+}
+.mixNm {
+  font-weight: 500;
+}
+.mixKey b {
+  font-weight: 700;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- 3. le classement
+   L'APPORT LE PLUS VISIBLE DE LA PAGE: on a un dessin pour presque chaque article (art.ts) et la
+   version d'avant n'en montrait aucun.
+   ⚠ EN LIGNES, PLUS EN GRILLE DE CARTES, et c'est une consequence directe du verdict: une grille de
+   cartes laisse des TROUS des que le nombre d'articles ne tombe pas juste (trois articles dans une
+   rangee de cinq), et le cas creux est le cas normal. Une ligne par article ne peut pas faire de
+   trou, s'etire proprement quand il y en a peu, et la barre de proportion prend enfin la largeur
+   qu'il lui faut pour se lire comme un classement. */
+/*
+ * LES LIGNES SE PARTAGENT LA HAUTEUR, MAIS JUSQU'A UN PLAFOND.
+ *
+ * ⚠ Mesure avant/apres, cas creux a 1920x1080: sans plafond, DEUX articles dans un panneau de 568px
+ * donnaient deux pavés de 232px. Une ligne de classement, c'est une plaque de 56px et trois textes
+ * courts: a 232px elle n'est pas genereuse, elle est vide, et on retombe exactement sur le "panneau
+ * qui contient une petite chose" du verdict.
+ *
+ * ⚠⚠ CORRIGE LE 2026-08-09: l'air au-dessus du plafond etait CENTRE (`align-self: center`,
+ * juste au-dessus dans le bloc `@media (min-width: 1180px)`), au motif que le repartir en haut ET
+ * en bas se lit comme une marge plutot que comme un oubli contre un bord. Cette lecture tenait
+ * tant que l'exces restait modeste - mais la rangee du haut a ete plafonnee le meme jour ("needs
+ * to be half the high"), et la rangee du bas a herite de tout ce qu'elle ne recevait pas avant:
+ * un panneau a trois lignes plafonnees a 364px pouvait se retrouver dans une cellule de 608px.
+ * Centrer un aussi grand ecart ne se lit plus comme une marge, ca se lit comme une liste qui flotte
+ * au milieu d'une boite vide - le proprietaire, en le voyant: *"look they are in the middle"*.
+ * L'air va desormais en bas seul (`align-self: start`): c'est le seul endroit ou une liste sait
+ * deja porter un surplus sans avoir l'air d'un oubli, exactement comme un panneau qui a de la
+ * place pour grandir.
+ *
+ * `--n` (le nombre de lignes) est pose par la vue: le plafond doit suivre le nombre d'articles,
+ * sinon deux articles et six articles se partageraient le meme plafond total.
+ */
+/*
+ * ⚠⚠ `grid-auto-rows: auto`, ET LE PLANCHER VISUEL EST SUR LA LIGNE (`min-height`), PAS SUR LA
+ * PISTE. Ce n'est pas equivalent, et la difference a ete mesuree: avec `minmax(62px, auto)`, quand
+ * la place manque, l'algorithme de dimensionnement retombe sur la BASE de la piste, c'est-a-dire les
+ * 62px ecrits en dur, et pas sur le contenu. Cas plein a 1280x900: les six lignes du classement
+ * etaient ecrasees a 62px alors qu'elles en demandaient 70, et 28 lignes de la page debordaient de
+ * leur propre boite (mesure `scrollHeight > clientHeight`). Un maximum `auto` seul ne protege de
+ * rien: c'est le MINIMUM qui doit valoir le contenu.
+ * Avec `auto` des deux cotes, le plancher de la piste EST le contenu (min-height compris), donc la
+ * ligne ne peut plus etre comprimee; quand tout ne rentre pas, la liste deborde et `.pbody` defile,
+ * ce qui est le bon echec.
+ */
+.rlist {
+  display: grid;
+  gap: 8px;
+  grid-auto-rows: auto;
+  align-content: stretch;
+  min-height: 0;
+}
+.rrow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  /* --bg et non --surf: la ligne vit DANS un panneau deja en --surf, et surf sur surf ne se voit pas. */
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 7px 12px 7px 7px;
+  /*
+   * ⚠⚠ PAS DE `min-height` ICI, ET C'EST CONTRE-INTUITIF. Sur un element de grille, `min-height`
+   * NE POSE PAS un plancher en plus du contenu: il REMPLACE la contribution minimale automatique
+   * (qui vaut le contenu). Ecrire `min-height: 62px` autorisait donc la piste a descendre a 62px
+   * alors que la ligne en demande 70 (plaque de 56 + 14 de marge interne), et la ligne debordait de
+   * sa propre boite. Mesure: 28 lignes dans ce cas a 1280x900. Le plancher utile est deja la, c'est
+   * la plaque; le laisser parler est plus juste que de le repeter en dur, et impossible a
+   * desynchroniser de la taille reelle du dessin.
+   */
+}
+.rplate {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--plate);
+  color: var(--k);
+}
+.rfig {
+  display: grid;
+  place-items: center;
+}
+.rfig svg {
+  width: 38px;
+  height: 38px;
+  display: block;
+}
+/* Le repli d'icone de rayon est un REPERAGE, pas une illustration: plus petit et attenue, pour que
+   "cet article n'a pas de dessin" se lise sans avoir a l'ecrire. */
+.rfig.icon svg {
+  width: 24px;
+  height: 24px;
+  opacity: 0.4;
+}
+/*
+ * ⚠ DEPUIS LE 2026-08-09, C'EST UN <Badge> (shadcn), PLUS UN <span> A LA MAIN: sa typographie
+ * (`text-xs font-medium`) et sa forme (pilule, `rounded-4xl`) viennent deja du composant, ce fichier
+ * ne pose donc plus que sa POSITION (le coin de la plaque, en debord pour lire comme un badge et
+ * non comme une etiquette collee) et sa COULEUR (le ton `--k`/`--onk` DU RAYON, jamais `--primary`:
+ * un badge de rang uniformement bleu de marque aurait efface la teinte par rayon que le classement
+ * porte partout ailleurs sur cette ligne).
+ */
+.rrank {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  background: var(--k);
+  color: var(--onk, var(--on-k));
+  min-width: 18px;
+  padding: 0 5px;
+}
+.rmid {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.rcat {
+  color: var(--kt);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.rnm {
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rbar {
+  height: 4px;
+  background: var(--hair);
+  margin-top: 5px;
+}
+.rbar i {
+  display: block;
+  height: 100%;
+  background: var(--k);
+  /* La barre part de sa largeur finale directement au premier rendu SSR (React n'anime jamais un
+     changement qu'il n'a pas vu se produire), donc cette transition ne joue QUE sur une vraie
+     bascule client (changement de période): `width` change, le navigateur interpole entre les deux
+     valeurs. Aucun JS a écrire pour ça. */
+  transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rbar i {
+    transition: none;
+  }
+}
+.rend {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  white-space: nowrap;
+}
+.rqty {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.rqty b {
+  font-size: clamp(18px, 2.4vh, 26px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.rqty span {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted-text);
+}
+.rrev {
+  font-size: 11px;
+  color: var(--muted-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- 4. le journal
+   Groupe PAR JOURNEE, une ligne par ticket, le montant en tete de ligne. La version rejetee alignait
+   un ticket par ligne de TABLEAU, tous de meme poids: c'est le "line per line" du proprietaire.
+   Ici la ligne est une boite fermee, le montant domine, et le detail est DESSINE. */
+/*
+ * ⚠⚠ `grid-template-rows: auto auto`, ET SURTOUT PAS DE `min-height: 0` ICI - voir le commentaire
+ * de `.pbody.one .jlist` (bloc du plan de travail plus haut) pour la mesure complete. `.jday` est
+ * une rangee auto parmi d'autres dans la grille de `.pbody` des que le journal compte plusieurs
+ * journees, donc son plancher DOIT rester le contenu: `min-height: auto` (la valeur par defaut
+ * d'un enfant de grille) EST ce plancher, et l'ecrire `0` le retire, ce qui laisse `.jday` se faire
+ * ecraser a la hauteur de son seul entete pendant que ses tickets debordent en dessous, sur la
+ * journee suivante. Le plafond `minmax(0, 1fr)` + `min-height: 0` original, LUI, reste correct mais
+ * SEULEMENT quand `.jday` recoit une hauteur definie a diviser (le cas a une seule journee,
+ * `.pbody.one .jday` ci-dessous) - c'est le meme partage de responsabilite que `.rlist`/`.jlist`.
+ */
+.jday {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 7px;
+}
+.dhead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.dnm {
+  font-weight: 600;
+  font-size: 13px;
+}
+.dfil {
+  flex: 1;
+  height: 1px;
+  background: var(--hair);
+  align-self: center;
+  min-width: 12px;
+}
+.dct {
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.dtot {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Meme mecanique que `.rlist`, plafond plus haut (voir le bloc du plan de travail): une ligne de
+   ticket porte plusieurs articles dessines qui peuvent passer a la ligne, donc elle a de quoi
+   occuper 150px, ce qu'une ligne de classement n'a pas. */
+.jlist {
+  display: grid;
+  gap: 8px;
+  grid-auto-rows: auto;
+  align-content: stretch;
+  min-height: 0;
+}
+.trow {
+  display: grid;
+  grid-template-columns: minmax(78px, auto) minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 8px 12px;
+  /* Pas de `min-height`: meme piege que `.rrow`, voir le commentaire la-bas. */
+}
+/* Sous 560px la ligne se replie en deux etages: montant et heure d'abord, detail en dessous. Un
+   `grid-template-columns` a trois colonnes sur 300px de large ecraserait les trois. */
+@media (max-width: 560px) {
+  .trow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .tlines {
+    grid-column: 1 / -1;
+  }
+}
+.tamt {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.tlines {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 12px;
+  min-width: 0;
+}
+.li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+/* La meme plaque claire que le classement, en miniature: un ticket se lit alors comme les articles
+   qu'on a vendus, pas comme une chaine de caracteres. */
+.liv {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--plate);
+  color: var(--k);
+}
+.liv svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+}
+/* `.icon` est le seul modificateur partage du fichier: le meme composant le pose sur les deux
+   tailles de dessin, et il dit "repli de rayon", pas "illustration de l'article". */
+.liv.icon svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.45;
+}
+.liq {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--kt);
+}
+.lin {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.more {
+  font-size: 10px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.nolines {
+  font-size: 11px;
+  color: var(--faint);
+}
+.tmeta {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  white-space: nowrap;
+}
+.ttime {
+  font-size: 11px;
+  color: var(--muted-text);
+  font-variant-numeric: tabular-nums;
+}
+.tref {
+  font-size: 10px;
+  color: var(--faint);
+}
+.tshare {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ok);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   LA FICHE CLIENT SOUS UN TICKET: a qui, et sur quelle voiture.
+
+   Demande du proprietaire (2026-08-21) pour la concession et le garage.
+
+   ⚠ `grid-column: 1 / -1` EST OBLIGATOIRE. `.trow` est une grille a trois
+   colonnes (montant / detail / meta); un quatrieme enfant sans cette regle
+   devient une quatrieme colonne et ecrase les trois autres au lieu de se poser
+   dessous. Le repli deux etages sous 560px continue de marcher: une ligne qui
+   traverse toute la grille traverse aussi celle du repli.
+   --------------------------------------------------------------------------- */
+.tfiche {
+  grid-column: 1 / -1;
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 6px 14px;
+  margin-top: 7px; padding-top: 7px;
+  border-top: 1px dashed var(--hair);
+  font-size: 11px; color: var(--muted-text);
+}
+.tfid, .tfveh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
+.tfid b, .tfveh b { color: var(--fg); font-weight: 600; }
+/* Une pastille de modification: assez discrete pour ne pas concurrencer le
+   montant du ticket, assez presente pour se lire d'un coup d'oeil. */
+.tfmod {
+  border: 1px solid var(--hair); border-radius: 999px;
+  padding: 1px 7px; font-size: 10px; color: var(--muted-text);
+}
+.tfcount { font-size: 10px; color: var(--faint); }
+/* "d'origine" est une VRAIE reponse (la voiture n'a rien de pose), a distinguer
+   de `.tfwarn` qui dit qu'on ne sait pas. Les confondre est le defaut que toute
+   cette fiche existe pour eviter. */
+.tfstock { font-size: 10px; color: var(--faint); font-style: italic; }
+.tfwarn { font-size: 10px; color: var(--warn); font-weight: 600; }
+.tffleet {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--faint);
+}
