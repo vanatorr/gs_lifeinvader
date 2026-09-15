@@ -25,6 +25,29 @@ For job/portal demos without OAuth, seed your own Discord id onto account 1001 (
 | 14 | Omar Hassan | `motodealer` | 3 | `900000000000000014` | `64dfb20fd88e27416679e70472074acc3f44e3f2` | Sanders boss |
 | 15 | Jade Morel | `shoprichmanglen` | 2 | `900000000000000015` | `899c2fd8f61875c1d3f87f38fd2045800716d875` | LTD Richman Glen |
 
+## Data inventory (this dump)
+
+Scoped to active `lifeinvader_businesses.job` from the local live DB, then scrubbed.
+
+| Dataset | Table(s) | Rows (approx) | Notes |
+|---------|----------|---------------|-------|
+| Factures ouvertes | `billing` | 2 | debtor/sender licenses hashed |
+| Factures payees | `billing_history` | 800 | capped at 800 most recent |
+| Registre retraits/depots/primes | `society_transactions` | 171 | type 0=retrait, 1=depot, 2=prime; actors remapped to demos when possible |
+| Comptes entreprise (portail) | `gs_bank_accounts` | 34 | `subaccount=''` treasury, `blocked` pot; PIN wiped |
+| Ledger banque | `gs_bank_txn` + `gs_bank_entries` | 4000 txn | capped at 4000 most recent |
+| Coffres configures | `citadel_job_storages` | 35 | catalogue even if empty |
+| Contenu coffres | `gs_inventory_storage` | 20 | only opened containers |
+| Registre retraits/depots coffres | (omitted) | 0 | lives only in staff `gs_logs`; not LifeInvader |
+| Dictionnaire items | `items` | 631 | labels for inventory blobs |
+| Catalogue vente portail | `lifeinvader_business_items` | (from raw export) | SKUs caisse |
+| Flotte job | `owned_vehicles` | 23 | plates/owners scrubbed |
+| Catalogue concess | `cardealer_vehicles` | 742 | `buy_price` = achat, `sell_price`/`price` = vente |
+
+Scope: original LifeInvader demo tables + asked additions only
+(factures, coffres contenu, vehicules, comptes gs_bank/society_transactions, items).
+No staff `gs_logs`, no full-schema junk tables.
+
 ## Suggested local `.env.local`
 
 ```
